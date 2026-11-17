@@ -1,0 +1,4 @@
+# A hash map in the generation path is deterministic within one process and
+# different in the next one. Iterate arrays; BTreeMap only where iteration
+# order cannot reach the output.
+disallowed-types = ["std::collections::HashMap", "std::collections::HashSet"]

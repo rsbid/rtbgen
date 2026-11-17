@@ -1,0 +1,22 @@
+[package]
+name = "rtbgen-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Command-line interface for the rtbgen fixture generator"
+keywords.workspace = true
+categories.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "rtbgen"
+path = "src/main.rs"
+# The binary name shadows the rtbgen library in target/doc; only the library is documented.
+doc = false
+
+[lints]
+workspace = true
+
+[dependencies]
+rtbgen = { path = "../rtbgen", version = "0.1.0" }

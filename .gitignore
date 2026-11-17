@@ -1,0 +1,5 @@
+# rtbgen code repository.
+#
+# Build output and local secrets
+target/
+.env
