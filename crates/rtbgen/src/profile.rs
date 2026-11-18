@@ -56,6 +56,22 @@ impl Profile {
         }
     }
 
+    /// A short description of the shape, used by `--list-profiles`.
+    #[must_use]
+    pub const fn description(self) -> &'static str {
+        match self {
+            Self::SiteDisplay => "website with a display banner",
+            Self::SiteVideo => "website with an in-stream or outstream video",
+            Self::SiteNative => "website with a native impression",
+            Self::AppRewarded => "application with a rewarded video",
+            Self::AppBanner => "application with a display banner",
+            Self::PmpDeals => "website with a private marketplace and deals",
+            Self::MultiImp => "website with mixed-media impressions",
+            Self::Sparse => "the minimum: an id and one banner impression",
+            Self::Maximal => "every field the model can emit in one valid request",
+        }
+    }
+
     /// Parses the exact `snake_case` name of a profile.
     ///
     /// The match is case-sensitive; there are no aliases. The names come from

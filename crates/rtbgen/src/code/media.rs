@@ -108,13 +108,15 @@ impl fmt::Display for PlacementPosition {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Protocol(u16);
 
-#[cfg(test)]
 impl Protocol {
-    /// `VAST` 2.0; used by the maximal fixture.
+    /// `VAST` 2.0.
     pub(crate) const VAST_2_0: Self = Self(2);
 
-    /// `VAST` 3.0; used by the maximal fixture.
+    /// `VAST` 3.0.
     pub(crate) const VAST_3_0: Self = Self(3);
+
+    /// `VAST` 4.0.
+    pub(crate) const VAST_4_0: Self = Self(7);
 }
 
 impl fmt::Display for Protocol {
@@ -131,10 +133,18 @@ impl fmt::Display for Protocol {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Placement(u16);
 
-#[cfg(test)]
 impl Placement {
-    /// In-stream placement; used by the maximal fixture.
+    /// In-stream: pre-roll, mid-roll or post-roll.
     pub(crate) const IN_STREAM: Self = Self(1);
+
+    /// In-article.
+    pub(crate) const IN_ARTICLE: Self = Self(3);
+
+    /// In-feed.
+    pub(crate) const IN_FEED: Self = Self(4);
+
+    /// Interstitial.
+    pub(crate) const INTERSTITIAL: Self = Self(5);
 }
 
 impl fmt::Display for Placement {
@@ -147,7 +157,6 @@ impl fmt::Display for Placement {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Linearity(u16);
 
-#[cfg(test)]
 impl Linearity {
     /// Only linear creatives are allowed; used by the maximal fixture.
     pub(crate) const LINEAR: Self = Self(1);
@@ -165,7 +174,6 @@ impl fmt::Display for Linearity {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct VcmMode(u16);
 
-#[cfg(test)]
 impl VcmMode {
     /// The banner renders as an end-card; used by the maximal fixture.
     pub(crate) const END_CARD: Self = Self(1);
@@ -184,7 +192,6 @@ impl fmt::Display for VcmMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct FeedType(u16);
 
-#[cfg(test)]
 impl FeedType {
     /// A music streaming service; used by the maximal fixture.
     pub(crate) const MUSIC_STREAM: Self = Self(1);
@@ -202,7 +209,6 @@ impl fmt::Display for FeedType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct VolumeNormalization(u16);
 
-#[cfg(test)]
 impl VolumeNormalization {
     /// Normalized to the average content volume; used by the maximal fixture.
     pub(crate) const AVERAGE: Self = Self(1);
@@ -218,9 +224,8 @@ impl fmt::Display for VolumeNormalization {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct DeliveryMethod(u16);
 
-#[cfg(test)]
 impl DeliveryMethod {
-    /// Progressive download; used by the maximal fixture.
+    /// Progressive download.
     pub(crate) const PROGRESSIVE: Self = Self(2);
 }
 
@@ -234,7 +239,6 @@ impl fmt::Display for DeliveryMethod {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct CompanionType(u16);
 
-#[cfg(test)]
 impl CompanionType {
     /// A static image resource; used by the maximal fixture.
     pub(crate) const STATIC: Self = Self(1);

@@ -56,15 +56,22 @@ impl ImpId {
     }
 }
 
+#[cfg(test)]
+impl ImpId {
+    /// Returns the numeric id; used by generator tests.
+    pub(crate) const fn into_inner(self) -> u64 {
+        self.0
+    }
+}
+
 id_type!(
     /// The id of a private marketplace deal, formatted as `deal-` plus the value.
     DealId,
     "deal-{}"
 );
 
-#[cfg(test)]
 impl DealId {
-    /// Wraps a numeric deal id; used by the maximal fixture.
+    /// Wraps a numeric deal id.
     #[must_use]
     pub(crate) const fn new(value: u64) -> Self {
         Self(value)
@@ -105,9 +112,8 @@ id_type!(
     "a{}"
 );
 
-#[cfg(test)]
 impl AppId {
-    /// Wraps a numeric app id; used by the maximal fixture.
+    /// Wraps a numeric app id.
     #[must_use]
     pub(crate) const fn new(value: u64) -> Self {
         Self(value)

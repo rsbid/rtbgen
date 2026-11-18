@@ -24,14 +24,22 @@ pub(crate) struct Pmp {
 }
 
 impl Pmp {
+    /// Builds a marketplace with a fixed auction flag and its deals.
+    pub(crate) const fn new(private_auction: Flag, deals: &DealList) -> Self {
+        Self {
+            private_auction: Some(private_auction),
+            deals: *deals,
+            ext: None,
+        }
+    }
+
     pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
         option_number(f, "private_auction", self.private_auction)?;
         self.deals.write(f, "deals")?;
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) fn maximal() -> Self {
+    pub(crate) fn maximal() -> Self {
         let mut deals = DealList::default();
         deals.push(&Deal::maximal());
 
@@ -56,6 +64,19 @@ pub(crate) struct Deal {
 }
 
 impl Deal {
+    /// Builds a deal with only its id set.
+    pub(crate) const fn new(id: DealId) -> Self {
+        Self {
+            id,
+            bidfloor: None,
+            bidfloorcur: None,
+            at: None,
+            wseat: &[],
+            wadomain: &[],
+            ext: None,
+        }
+    }
+
     fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
         field_id(f, "id", self.id)?;
         option_money(f, "bidfloor", self.bidfloor)?;
@@ -66,8 +87,7 @@ impl Deal {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             id: DealId::new(1),
             bidfloor: Some(Money::from_scaled(15_000)),
@@ -80,6 +100,13 @@ impl Deal {
     }
 }
 
+setters!(Deal {
+    set_bidfloor => bidfloor: Option<Money>,
+    set_bidfloorcur => bidfloorcur: Option<Currency>,
+    set_at => at: Option<DealAuctionType>,
+    set_wadomain => wadomain: &'static [&'static str],
+});
+
 /// A fixed-capacity list of deals.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct DealList {
@@ -87,16 +114,22 @@ pub(crate) struct DealList {
     len: u8,
 }
 
-impl DealList {
-    #[cfg(test)]
-    const fn default() -> Self {
+impl Default for DealList {
+    fn default() -> Self {
+        // The seed value is never written: `len` starts at zero.
         Self {
             items: [Deal::maximal(); MAX_DEALS],
             len: 0,
         }
     }
+}
 
+impl DealList {
     #[cfg(test)]
+    pub(crate) const fn count(&self) -> u8 {
+        self.len
+    }
+
     pub(crate) fn push(&mut self, deal: &Deal) {
         if let Some(slot) = self.items.get_mut(usize::from(self.len)) {
             *slot = *deal;
@@ -149,8 +182,7 @@ impl Source {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) fn maximal() -> Self {
+    pub(crate) fn maximal() -> Self {
         let mut nodes = NodeList::default();
         nodes.push(&SupplyChainNode::maximal());
 
@@ -208,8 +240,7 @@ impl SupplyChainNode {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             asi: "exchange.example",
             sid: "123",
@@ -228,16 +259,16 @@ pub(crate) struct NodeList {
     len: u8,
 }
 
-impl NodeList {
-    #[cfg(test)]
-    const fn default() -> Self {
+impl Default for NodeList {
+    fn default() -> Self {
         Self {
             items: [SupplyChainNode::maximal(); MAX_NODES],
             len: 0,
         }
     }
+}
 
-    #[cfg(test)]
+impl NodeList {
     pub(crate) fn push(&mut self, node: &SupplyChainNode) {
         if let Some(slot) = self.items.get_mut(usize::from(self.len)) {
             *slot = *node;
@@ -302,8 +333,7 @@ impl Regs {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             coppa: Some(Flag::No),
             gdpr: Some(Flag::Yes),

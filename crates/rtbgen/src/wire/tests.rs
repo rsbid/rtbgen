@@ -17,13 +17,19 @@ fn render(model: &RequestModel, spec: SpecVersion) -> String {
 }
 
 fn maximal_value() -> Value {
-    serde_json::from_str(&render(&RequestModel::maximal(), SpecVersion::V26))
-        .expect("the writer must emit valid JSON")
+    serde_json::from_str(&render(
+        &RequestModel::maximal(crate::seed::Seed::new(42)),
+        SpecVersion::V26,
+    ))
+    .expect("the writer must emit valid JSON")
 }
 
 #[test]
 fn maximal_top_level_is_ordered_and_complete() {
-    let json = render(&RequestModel::maximal(), SpecVersion::V26);
+    let json = render(
+        &RequestModel::maximal(crate::seed::Seed::new(42)),
+        SpecVersion::V26,
+    );
 
     assert!(json.starts_with(r#"{"id":"req-000042","imp":["#));
     assert!(!json.contains('\n'));
@@ -167,8 +173,14 @@ fn maximal_context_is_complete() {
 
 #[test]
 fn v25_is_v26_without_the_26_only_fields() {
-    let v26_json = render(&RequestModel::maximal(), SpecVersion::V26);
-    let v25_json = render(&RequestModel::maximal(), SpecVersion::V25);
+    let v26_json = render(
+        &RequestModel::maximal(crate::seed::Seed::new(42)),
+        SpecVersion::V26,
+    );
+    let v25_json = render(
+        &RequestModel::maximal(crate::seed::Seed::new(42)),
+        SpecVersion::V25,
+    );
 
     for field in ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid"] {
         assert!(

@@ -58,8 +58,7 @@ impl Site {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             id: Some(SiteId::new(1)),
             name: Some("Example Site"),
@@ -77,7 +76,7 @@ impl Site {
 }
 
 /// An application.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct App {
     id: Option<AppId>,
     name: Option<&'static str>,
@@ -90,6 +89,19 @@ pub(crate) struct App {
     keywords: Option<&'static str>,
     ext: Option<RawJson>,
 }
+
+setters!(App {
+    set_id => id: Option<AppId>,
+    set_name => name: Option<&'static str>,
+    set_bundle => bundle: Option<&'static str>,
+    set_storeurl => storeurl: Option<&'static str>,
+    set_domain => domain: Option<&'static str>,
+    set_cat => cat: &'static [&'static str],
+    set_ver => ver: Option<&'static str>,
+    set_publisher => publisher: Option<Publisher>,
+    set_keywords => keywords: Option<&'static str>,
+    set_ext => ext: Option<RawJson>,
+});
 
 impl App {
     pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
@@ -109,8 +121,7 @@ impl App {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             id: Some(AppId::new(3)),
             name: Some("Example App"),
@@ -152,8 +163,7 @@ impl Publisher {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             id: Some(PublisherId::new(2)),
             name: Some("Example Publisher"),
@@ -218,8 +228,7 @@ impl Device {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             ua: Some("Test Agent/1.0"),
             ip: Some("203.0.113.7"),
@@ -270,8 +279,7 @@ impl Geo {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             country: Some("RU"),
             region: Some("MOW"),
@@ -316,8 +324,7 @@ impl User {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             id: Some(UserId::new(4)),
             buyeruid: Some(BuyerUserId::new(5)),

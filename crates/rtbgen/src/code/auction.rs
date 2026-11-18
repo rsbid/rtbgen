@@ -34,7 +34,6 @@ impl fmt::Display for AuctionType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct DealAuctionType(u16);
 
-#[cfg(test)]
 impl DealAuctionType {
     /// `1`: first-price auction.
     pub(crate) const FIRST_PRICE: Self = Self(1);

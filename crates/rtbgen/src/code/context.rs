@@ -10,7 +10,6 @@ use core::fmt;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct SsaiMode(u16);
 
-#[cfg(test)]
 impl SsaiMode {
     /// All assets and tracking are server-side; used by the maximal fixture.
     pub(crate) const SERVER_SIDE: Self = Self(3);
@@ -26,7 +25,6 @@ impl fmt::Display for SsaiMode {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct FinalDecision(u16);
 
-#[cfg(test)]
 impl FinalDecision {
     /// The upstream source decides; used by the maximal fixture.
     pub(crate) const UPSTREAM: Self = Self(1);

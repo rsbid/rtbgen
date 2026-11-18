@@ -5,6 +5,7 @@ use crate::code::AuctionType;
 use crate::currency::Currency;
 use crate::ids::RequestId;
 use crate::raw::RawJson;
+use crate::seed::Seed;
 use crate::version::SpecVersion;
 use crate::write::{
     Object, field_id, object, object_field, option_currency_array, option_number, option_raw,
@@ -35,6 +36,7 @@ setters!(RequestModel {
     set_id => id: RequestId,
     set_imp => imp: ImpList,
     set_site => site: Option<Site>,
+    set_app => app: Option<App>,
     set_device => device: Option<Device>,
     set_user => user: Option<User>,
     set_at => at: Option<AuctionType>,
@@ -42,11 +44,20 @@ setters!(RequestModel {
     set_cur => cur: &'static [Currency],
     set_bcat => bcat: &'static [&'static str],
     set_badv => badv: &'static [&'static str],
+    set_bapp => bapp: &'static [&'static str],
     set_regs => regs: Option<Regs>,
     set_ext => ext: Option<RawJson>,
 });
 
 impl RequestModel {
+    pub(crate) const fn impressions(&self) -> &ImpList {
+        &self.imp
+    }
+
+    pub(crate) const fn impressions_mut(&mut self) -> &mut ImpList {
+        &mut self.imp
+    }
+
     pub(crate) fn write<W: fmt::Write>(&self, out: &mut W, spec: SpecVersion) -> fmt::Result {
         object(out, |f| self.write_fields(f, spec))
     }
@@ -86,15 +97,16 @@ impl RequestModel {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) fn maximal() -> Self {
-        use crate::seed::Seed;
-
+    /// Builds the model with every field the writer can emit.
+    ///
+    /// The `Maximal` profile alternates the supply source, so this fixture
+    /// carries both `site` and `app`; the profile drops one of them.
+    pub(crate) fn maximal(seed: Seed) -> Self {
         let mut imps = ImpList::default();
         imps.push(&super::Imp::maximal());
 
         Self {
-            id: RequestId::from_seed(Seed::new(42)),
+            id: RequestId::from_seed(seed),
             imp: imps,
             site: Some(Site::maximal()),
             app: Some(App::maximal()),

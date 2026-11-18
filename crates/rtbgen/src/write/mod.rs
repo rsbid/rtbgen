@@ -175,7 +175,8 @@ pub(crate) fn field_currency<W: fmt::Write>(
     name: &str,
     value: Currency,
 ) -> fmt::Result {
-    field_string(f, name, value.as_str())
+    f.key(name)?;
+    value.write_literal(f.out())
 }
 
 /// Writes an optional currency code.
@@ -283,7 +284,7 @@ pub(crate) fn currency_array<W: fmt::Write>(out: &mut W, values: &[Currency]) ->
         } else {
             out.write_char(',')?;
         }
-        json_string(out, value.as_str())?;
+        value.write_literal(out)?;
     }
 
     out.write_char(']')

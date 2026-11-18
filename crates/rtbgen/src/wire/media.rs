@@ -59,8 +59,7 @@ impl Banner {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             w: Some(300),
             h: Some(250),
@@ -77,7 +76,6 @@ impl Banner {
         }
     }
 }
-
 /// A fixed-capacity list of companion banners.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct BannerList {
@@ -85,16 +83,16 @@ pub(crate) struct BannerList {
     len: u8,
 }
 
-impl BannerList {
-    #[cfg(test)]
+impl Default for BannerList {
     fn default() -> Self {
         Self {
             items: [Banner::default(); MAX_COMPANIONS],
             len: 0,
         }
     }
+}
 
-    #[cfg(test)]
+impl BannerList {
     pub(crate) fn push(&mut self, banner: &Banner) {
         if let Some(slot) = self.items.get_mut(usize::from(self.len)) {
             *slot = *banner;
@@ -125,7 +123,7 @@ impl BannerList {
 }
 
 /// A video impression.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Video {
     mimes: &'static [&'static str],
     minduration: Option<u32>,
@@ -147,6 +145,27 @@ pub(crate) struct Video {
     companiontype: &'static [CompanionType],
     ext: Option<RawJson>,
 }
+
+setters!(Video {
+    set_mimes => mimes: &'static [&'static str],
+    set_minduration => minduration: Option<u32>,
+    set_maxduration => maxduration: Option<u32>,
+    set_protocols => protocols: &'static [Protocol],
+    set_w => w: Option<u32>,
+    set_h => h: Option<u32>,
+    set_startdelay => startdelay: Option<i32>,
+    set_placement => placement: Option<Placement>,
+    set_linearity => linearity: Option<Linearity>,
+    set_skip => skip: Option<Flag>,
+    set_skipmin => skipmin: Option<u32>,
+    set_skipafter => skipafter: Option<u32>,
+    set_api => api: &'static [ApiFramework],
+    set_battr => battr: &'static [CreativeAttribute],
+    set_delivery => delivery: &'static [DeliveryMethod],
+    set_pos => pos: Option<PlacementPosition>,
+    set_companionad => companionad: BannerList,
+    set_companiontype => companiontype: &'static [CompanionType],
+});
 
 impl Video {
     pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
@@ -171,8 +190,7 @@ impl Video {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) fn maximal() -> Self {
+    pub(crate) fn maximal() -> Self {
         let mut companionad = BannerList::default();
         companionad.push(&Banner::maximal());
 
@@ -233,8 +251,7 @@ impl Audio {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             mimes: &["audio/mp4"],
             minduration: Some(5),
@@ -253,7 +270,7 @@ impl Audio {
 }
 
 /// A native impression.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Native {
     request: &'static str,
     ver: &'static str,
@@ -261,6 +278,14 @@ pub(crate) struct Native {
     battr: &'static [CreativeAttribute],
     ext: Option<RawJson>,
 }
+
+setters!(Native {
+    set_request => request: &'static str,
+    set_ver => ver: &'static str,
+    set_api => api: &'static [ApiFramework],
+    set_battr => battr: &'static [CreativeAttribute],
+    set_ext => ext: Option<RawJson>,
+});
 
 impl Native {
     pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
@@ -271,8 +296,7 @@ impl Native {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(super) const fn maximal() -> Self {
+    pub(crate) const fn maximal() -> Self {
         Self {
             request: r#"{"native":{"ver":"1.2"}}"#,
             ver: "1.2",

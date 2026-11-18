@@ -26,9 +26,9 @@ mod media;
 mod party;
 mod request;
 
-pub(crate) use context::{Regs, Source};
+pub(crate) use context::{Deal, DealList, Pmp, Regs, Source};
 pub(crate) use imp::{Imp, ImpList};
-pub(crate) use media::Banner;
+pub(crate) use media::{Banner, BannerList, Native, Video};
 pub(crate) use party::{App, Device, Geo, Publisher, Site, User};
 pub(crate) use request::RequestModel;
 

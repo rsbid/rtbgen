@@ -1,5 +1,37 @@
 use core::fmt;
 
+/// Returns the integer part of a finite, non-negative `f64`.
+///
+/// `f64 as u64` is forbidden by the lint profile, and the standard library's
+/// rounding helpers live outside `core`. The function instead decodes the IEEE
+/// 754 representation, which is exact and independent of the Rust version: the
+/// value is `mantissa × 2^exponent`, so the integer part is a shift.
+fn truncated_to_u64(value: f64) -> u64 {
+    if value <= 0.0_f64 {
+        return 0;
+    }
+
+    let bits = value.to_bits();
+    let exponent_bits = (bits >> 52_u32) & 0x7ff;
+    if exponent_bits == 0 {
+        // Zero or subnormal: smaller than one.
+        return 0;
+    }
+
+    let mantissa = (bits & 0x000f_ffff_ffff_ffff) | 0x0010_0000_0000_0000;
+    let exponent = i32::try_from(exponent_bits)
+        .ok()
+        .and_then(|exponent| exponent.checked_sub(1_075))
+        .unwrap_or(-1_i32);
+
+    if exponent >= 0 {
+        let shift = u32::try_from(exponent).unwrap_or(63);
+        mantissa.checked_shl(shift).unwrap_or(u64::MAX)
+    } else {
+        mantissa.checked_shr(exponent.unsigned_abs()).unwrap_or(0)
+    }
+}
+
 /// A non-negative money amount with a fixed scale of 10⁻⁴ units.
 ///
 /// The wire model never holds an `f64`: a float is parsed once, at the builder
@@ -10,10 +42,44 @@ pub(crate) struct Money(i64);
 impl Money {
     const SCALE: u64 = 10_000;
 
+    /// The largest amount the builder accepts: one million currency units.
+    const MAX_SCALED: f64 = 10_000_000_000.0;
+
     /// Creates an amount from its scaled integer representation.
     #[must_use]
     pub(crate) const fn from_scaled(value: i64) -> Self {
         Self(value)
+    }
+
+    /// Converts a CPM value into the fixed-scale representation.
+    ///
+    /// This is the only place where a float becomes money. `NaN`, negative and
+    /// non-finite values collapse to zero, values above [`Self::MAX_SCALED`]
+    /// clamp to the maximum, and the amount is rounded half up to the 10⁻⁴
+    /// scale, so the writer always sees an integer.
+    #[must_use]
+    pub(crate) fn from_cpm(cpm: f64) -> Self {
+        if cpm.is_nan() || cpm <= 0.0_f64 {
+            return Self(0);
+        }
+
+        let scaled = cpm * 10_000.0_f64 + 0.5_f64;
+        let capped = if scaled > Self::MAX_SCALED {
+            Self::MAX_SCALED
+        } else {
+            scaled
+        };
+
+        // The value is finite, non-negative and capped; `truncated_to_u64`
+        // recovers the integer part without an `as` cast.
+        Self(i64::try_from(truncated_to_u64(capped)).unwrap_or(i64::MAX))
+    }
+
+    /// Returns the scaled integer representation; used by the money tests.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) const fn scaled(self) -> i64 {
+        self.0
     }
 }
 
@@ -85,5 +151,36 @@ mod tests {
         assert_eq!(Money::from_scaled(-15_000).to_string(), "-1.5");
         assert_eq!(Money::from_scaled(-1).to_string(), "-0.0001");
         assert_eq!(Money::from_scaled(-10_000).to_string(), "-1.0");
+    }
+
+    #[test]
+    fn cpm_rounds_half_up_to_the_wire_scale() {
+        let cases: [(f64, &str); 8] = [
+            (0.0, "0.0"),
+            (1.5, "1.5"),
+            (2.0, "2.0"),
+            (0.0001, "0.0001"),
+            (1.15, "1.15"),
+            (1.005, "1.005"),
+            (1.234_56, "1.2346"),
+            (9_999.999_95, "10000.0"),
+        ];
+
+        for (cpm, expected) in cases {
+            assert_eq!(
+                Money::from_cpm(cpm).to_string(),
+                expected,
+                "cpm {cpm} formatted wrong"
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_cpm_clamps_instead_of_panicking() {
+        assert_eq!(Money::from_cpm(f64::NAN).to_string(), "0.0");
+        assert_eq!(Money::from_cpm(f64::INFINITY).to_string(), "1000000.0");
+        assert_eq!(Money::from_cpm(f64::NEG_INFINITY).to_string(), "0.0");
+        assert_eq!(Money::from_cpm(-1.0).to_string(), "0.0");
+        assert_eq!(Money::from_cpm(2_000_000.0).to_string(), "1000000.0");
     }
 }

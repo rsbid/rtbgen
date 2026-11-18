@@ -35,6 +35,9 @@ pub(crate) struct Imp {
 setters!(Imp {
     set_id => id: ImpId,
     set_banner => banner: Option<Banner>,
+    set_video => video: Option<Video>,
+    set_native => native: Option<Native>,
+    set_pmp => pmp: Option<Pmp>,
     set_bidfloor => bidfloor: Option<Money>,
     set_bidfloorcur => bidfloorcur: Option<Currency>,
     set_secure => secure: Option<Flag>,
@@ -77,7 +80,17 @@ impl Imp {
     }
 
     #[cfg(test)]
-    pub(super) fn maximal() -> Self {
+    pub(crate) const fn id_for_tests(self) -> ImpId {
+        self.id
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn pmp_for_tests(self) -> Option<Pmp> {
+        self.pmp
+    }
+
+    /// Builds the impression with every field the writer can emit.
+    pub(crate) fn maximal() -> Self {
         Self {
             id: ImpId::new(1),
             banner: Some(Banner::maximal()),
@@ -116,6 +129,11 @@ impl Default for ImpList {
 }
 
 impl ImpList {
+    #[cfg(test)]
+    pub(crate) const fn count(&self) -> u8 {
+        self.len
+    }
+
     pub(crate) fn push(&mut self, imp: &Imp) {
         if let Some(slot) = self.items.get_mut(usize::from(self.len)) {
             *slot = *imp;
@@ -125,6 +143,11 @@ impl ImpList {
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = &Imp> {
         self.items.iter().take(usize::from(self.len))
+    }
+
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut Imp> {
+        let len = usize::from(self.len);
+        self.items.iter_mut().take(len)
     }
 
     pub(crate) fn write<W: fmt::Write>(

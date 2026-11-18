@@ -2,7 +2,7 @@
 
 #![expect(clippy::expect_used, reason = "in tests a panic = a failed test")]
 
-use rtbgen::{Request, Seed};
+use rtbgen::{Profile, Request, Seed};
 use serde_json::Value;
 
 const GOLDEN: &[(u64, &str)] = &[
@@ -23,7 +23,10 @@ const GOLDEN: &[(u64, &str)] = &[
 #[test]
 fn site_display_bytes_are_frozen() {
     for (seed, expected) in GOLDEN {
-        let actual = Request::site_display(Seed::new(*seed)).to_json_string();
+        let actual = Request::builder(Profile::SiteDisplay)
+            .seed(Seed::new(*seed))
+            .build()
+            .to_json_string();
 
         assert_eq!(actual.as_str(), *expected, "seed {seed}");
 
@@ -46,9 +49,13 @@ fn site_display_bytes_are_frozen() {
 
 #[test]
 fn the_2_6_consent_field_is_emitted_when_present() {
-    let value: Value =
-        serde_json::from_str(&Request::site_display(Seed::new(u64::MAX)).to_json_string())
-            .expect("the generated request is valid JSON");
+    let value: Value = serde_json::from_str(
+        &Request::builder(Profile::SiteDisplay)
+            .seed(Seed::new(u64::MAX))
+            .build()
+            .to_json_string(),
+    )
+    .expect("the generated request is valid JSON");
 
     assert_eq!(
         value.pointer("/user/consent").and_then(Value::as_str),
@@ -59,9 +66,13 @@ fn the_2_6_consent_field_is_emitted_when_present() {
 #[test]
 fn the_request_auction_type_is_not_a_deal_only_code() {
     for seed in [0_u64, 42, u64::MAX] {
-        let value: Value =
-            serde_json::from_str(&Request::site_display(Seed::new(seed)).to_json_string())
-                .expect("the generated request is valid JSON");
+        let value: Value = serde_json::from_str(
+            &Request::builder(Profile::SiteDisplay)
+                .seed(Seed::new(seed))
+                .build()
+                .to_json_string(),
+        )
+        .expect("the generated request is valid JSON");
 
         assert!(
             matches!(value.pointer("/at").and_then(Value::as_u64), Some(1 | 2)),
@@ -72,8 +83,14 @@ fn the_request_auction_type_is_not_a_deal_only_code() {
 
 #[test]
 fn the_same_seed_is_byte_identical() {
-    let first = Request::site_display(Seed::new(42)).to_json_string();
-    let second = Request::site_display(Seed::new(42)).to_json_string();
+    let first = Request::builder(Profile::SiteDisplay)
+        .seed(Seed::new(42))
+        .build()
+        .to_json_string();
+    let second = Request::builder(Profile::SiteDisplay)
+        .seed(Seed::new(42))
+        .build()
+        .to_json_string();
 
     assert_eq!(first, second);
 }

@@ -3,34 +3,61 @@ use core::fmt;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
+use crate::builder::RequestBuilder;
+use crate::profile::Profile;
 use crate::seed::Seed;
 use crate::version::SpecVersion;
 use crate::wire::RequestModel;
 
 /// A generated `OpenRTB` bid request.
 ///
-/// The writer is pure: the same model and spec version always produce the
-/// same bytes. The typed builder is the M1 entry point; this milestone exposes
-/// the writer and the internal model.
+/// Build it with [`Request::builder`]; the writer is pure, so the same model and
+/// spec version always produce the same bytes.
 #[derive(Clone, Copy, Debug)]
 pub struct Request {
+    profile: Profile,
+    seed: Seed,
     spec: SpecVersion,
     model: RequestModel,
 }
 
 impl Request {
+    /// Starts a request of the given shape.
     #[must_use]
-    pub(crate) const fn from_model(spec: SpecVersion, model: &RequestModel) -> Self {
+    pub const fn builder(profile: Profile) -> RequestBuilder {
+        RequestBuilder::new(profile)
+    }
+
+    pub(crate) const fn from_model(
+        profile: Profile,
+        seed: Seed,
+        spec: SpecVersion,
+        model: &RequestModel,
+    ) -> Self {
         Self {
+            profile,
+            seed,
             spec,
             model: *model,
         }
     }
 
-    /// Builds the `SiteDisplay` fixture for `seed`.
+    /// Returns the profile the request was generated from.
     #[must_use]
-    pub fn site_display(seed: Seed) -> Self {
-        crate::generate::site_display(seed)
+    pub const fn profile(&self) -> Profile {
+        self.profile
+    }
+
+    /// Returns the seed the request was generated from.
+    #[must_use]
+    pub const fn seed(&self) -> Seed {
+        self.seed
+    }
+
+    /// Returns the `OpenRTB` revision the request is written for.
+    #[must_use]
+    pub const fn spec(&self) -> SpecVersion {
+        self.spec
     }
 
     /// Writes the request as compact JSON into `sink`.
