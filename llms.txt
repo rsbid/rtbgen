@@ -1,0 +1,65 @@
+# rtbgen
+
+> Deterministic OpenRTB 2.5/2.6 bid request generator for Rust tests, fuzzing and load runs.
+> Generates wire JSON, not types, so it works with every OpenRTB crate.
+
+## When to use
+
+- Writing a test that needs an OpenRTB 2.5 or 2.6 bid request (any shape).
+- Generating request corpora for load tests (`oha`, `drill`).
+- Reproducing a bug: a seed plus a profile is the whole fixture.
+- Checking that a parser treats optional objects as optional (`Sparse`).
+
+## When not to use
+
+- You need a *typed* OpenRTB model to read requests: use `iab-specs-openrtb` or `openrtb`.
+- You need to validate a document against the spec: use `rtblint`.
+- You need VAST: use `vast4-rs` or `vastlint`.
+
+## Quick start
+
+```rust
+use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed};
+
+let req = Request::builder(Profile::AppRewarded)
+    .seed(Seed::new(42))
+    .impressions(ImpressionCount::new(2))
+    .deals(Deals::new(3))
+    .floor(Floor::cpm(1.50, Currency::USD))
+    .build();
+
+let json: String = req.to_json_string();
+```
+
+Same seed and config produce byte-identical output; the output is covered by a versioned
+golden corpus. Knobs widen a profile, they never conflict with it, so `build()` cannot fail.
+
+## API map
+
+- `Request::builder(Profile)` — start here; `.seed()`, `.spec()`, `.impressions()`,
+  `.deals()`, `.floor()`, `.build()`.
+- `Request::write_json(&mut impl fmt::Write)` — no allocation, `no_std`.
+- `Request::to_json_string()` — `String` (feature `alloc`, on by default).
+- `SpecVersion` — `.spec(SpecVersion::V25)`; 2.6 is the default.
+- `Currency`, `Floor`, `ImpressionCount`, `Deals` — typed knobs.
+- `Profile::from_name(&str)` / `Profile::ALL` — profiles as data.
+- `rtbgen::corpus::ALL` — versioned corpus of generated fixtures.
+
+## Profiles
+
+`SiteDisplay`, `SiteVideo`, `SiteNative`, `AppRewarded`, `AppBanner`, `PmpDeals`,
+`MultiImp`, `Sparse`, `Maximal`.
+
+`Maximal` alternates `site` and `app` with the seed; OpenRTB forbids both at once.
+
+## Command line
+
+`rtbgen --profile app_rewarded --seed 42 --count 10000 --out ./requests/`,
+`rtbgen --list-profiles`, `rtbgen corpus --verify`.
+
+## Docs
+
+- Repository: https://github.com/rsbid/rtbgen
+- API docs: https://docs.rs/rtbgen
+- Changelog: https://github.com/rsbid/rtbgen/blob/main/CHANGELOG.md
+- Golden corpus: crates/rtbgen/corpus/v1/
