@@ -27,6 +27,16 @@ impl SpecVersion {
         }
     }
 
+    /// Returns whether this revision can emit the fields `OpenRTB` 2.6 added.
+    ///
+    /// The crate models a fixed set of 2.6 fields: `imp.rwdd`, `imp.ssai`,
+    /// `user.consent`, `regs.gdpr`, `regs.gpp` and `regs.gpp_sid`. The writer
+    /// omits exactly those fields for [`SpecVersion::V25`].
+    #[must_use]
+    pub(crate) const fn is_v26(self) -> bool {
+        matches!(self, Self::V26)
+    }
+
     /// Parses the exact dotted name of a supported revision.
     ///
     /// The match is case-sensitive; there are no aliases such as `"v26"` or

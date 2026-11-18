@@ -17,3 +17,6 @@ default = ["alloc"]
 alloc = []
 
 [dependencies]
+
+[dev-dependencies]
+serde_json = "1"
