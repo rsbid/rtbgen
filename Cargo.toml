@@ -10,6 +10,8 @@ license = "MIT OR Apache-2.0"
 description = "Deterministic OpenRTB 2.5/2.6 bid request generator for tests, fuzzing and load tests"
 keywords = ["openrtb", "advertising", "adtech", "testing", "fuzz"]
 categories = ["development-tools::testing"]
+repository = "https://github.com/rsbid/rtbgen"
+documentation = "https://docs.rs/rtbgen"
 # Publishing stays off until the first release
 publish = false
 
