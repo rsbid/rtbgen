@@ -1,16 +1,47 @@
 //! Command-line interface for `rtbgen`.
+//!
+//! Use this binary to generate fixtures for a load test or to verify the
+//! versioned corpus. Library users do not need it: the CLI is a thin wrapper
+//! over the same generator.
 
-#[expect(
-    clippy::print_stdout,
-    reason = "the command-line interface writes its output to stdout"
-)]
-fn main() {
-    let version = env!("CARGO_PKG_VERSION");
-    let profiles = rtbgen::Profile::ALL.len();
-    let specs = rtbgen::SpecVersion::ALL.len();
-    let default_spec = rtbgen::SpecVersion::default();
+pub mod args;
+pub mod run;
 
-    println!(
-        "rtbgen {version}: {profiles} profiles, {specs} spec versions (default {default_spec})"
-    );
+use std::io::Write;
+use std::process::ExitCode;
+
+use args::{Command, Error};
+
+fn main() -> ExitCode {
+    match collect() {
+        Ok(command) => match run::dispatch(command) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => fail(&error),
+        },
+        Err(error) => fail(&error),
+    }
+}
+
+fn collect() -> Result<Command, Error> {
+    let mut arguments = Vec::new();
+
+    for argument in std::env::args_os().skip(1) {
+        let Ok(value) = argument.into_string() else {
+            return Err(Error::NonUnicode);
+        };
+        arguments.push(value);
+    }
+
+    Command::parse(arguments.into_iter())
+}
+
+fn fail(error: &Error) -> ExitCode {
+    let mut stderr = std::io::stderr().lock();
+    if writeln!(stderr, "rtbgen: {error}").is_err() {
+        return ExitCode::FAILURE;
+    }
+    if writeln!(stderr, "try `rtbgen --help`").is_err() {
+        return ExitCode::FAILURE;
+    }
+    ExitCode::FAILURE
 }
