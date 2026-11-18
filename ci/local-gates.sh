@@ -7,6 +7,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+echo "== snippet"
+bash ci/check-snippet.sh
+
 echo "== fmt"
 cargo fmt --all --check
 
