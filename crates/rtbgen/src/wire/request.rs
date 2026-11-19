@@ -5,7 +5,6 @@ use crate::code::AuctionType;
 use crate::currency::Currency;
 use crate::ids::RequestId;
 use crate::raw::RawJson;
-use crate::seed::Seed;
 use crate::version::SpecVersion;
 use crate::write::{
     Object, field_id, object, object_field, option_currency_array, option_number, option_raw,
@@ -101,12 +100,12 @@ impl RequestModel {
     ///
     /// The `Maximal` profile alternates the supply source, so this fixture
     /// carries both `site` and `app`; the profile drops one of them.
-    pub(crate) fn maximal(seed: Seed) -> Self {
+    pub(crate) fn maximal(id: RequestId) -> Self {
         let mut imps = ImpList::default();
         imps.push(&super::Imp::maximal());
 
         Self {
-            id: RequestId::from_seed(seed),
+            id,
             imp: imps,
             site: Some(Site::maximal()),
             app: Some(App::maximal()),

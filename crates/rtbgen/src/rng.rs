@@ -37,14 +37,14 @@ impl Share {
 
 /// The deterministic source of every generated value.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Rng {
+pub(crate) struct RngEntropy {
     s0: u64,
     s1: u64,
     s2: u64,
     s3: u64,
 }
 
-impl Rng {
+impl RngEntropy {
     /// Expands a seed into the xoshiro256** state.
     #[must_use]
     pub(crate) const fn from_seed(seed: Seed) -> Self {
@@ -101,7 +101,7 @@ pub(crate) trait Entropy {
     }
 }
 
-impl Entropy for Rng {
+impl Entropy for RngEntropy {
     fn below(&mut self, upper: u32) -> u32 {
         if upper == 0 {
             return 0;
@@ -113,9 +113,63 @@ impl Entropy for Rng {
     }
 }
 
+/// An entropy source that reads its values from a byte slice.
+///
+/// One draw consumes eight bytes, little-endian. A short tail is zero-padded;
+/// once the slice is exhausted every draw is zero. That keeps generation total:
+/// an `arbitrary` or property-test input may end in the middle of a request,
+/// and the contract is to produce a request anyway, never to panic.
+#[cfg(test)]
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct BytesEntropy<'bytes> {
+    bytes: &'bytes [u8],
+    cursor: usize,
+}
+
+#[cfg(test)]
+impl<'bytes> BytesEntropy<'bytes> {
+    /// Wraps a byte slice as an entropy source.
+    #[must_use]
+    pub(crate) const fn new(bytes: &'bytes [u8]) -> Self {
+        Self { bytes, cursor: 0 }
+    }
+
+    /// Returns the number of bytes no draw has consumed yet.
+    #[must_use]
+    pub(crate) const fn remaining(&self) -> usize {
+        self.bytes.len().saturating_sub(self.cursor)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut word = [0_u8; 8];
+        let end = self.cursor.saturating_add(word.len()).min(self.bytes.len());
+
+        if let Some(chunk) = self.bytes.get(self.cursor..end) {
+            if let Some(head) = word.get_mut(..chunk.len()) {
+                head.copy_from_slice(chunk);
+            }
+            self.cursor = end;
+        }
+
+        u64::from_le_bytes(word)
+    }
+}
+
+#[cfg(test)]
+impl Entropy for BytesEntropy<'_> {
+    fn below(&mut self, upper: u32) -> u32 {
+        if upper == 0 {
+            return 0;
+        }
+
+        let product = u128::from(self.next_u64()).wrapping_mul(u128::from(upper));
+        u32::try_from(product >> 64).unwrap_or(0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Entropy, Rng, Share, splitmix64};
+    use super::{BytesEntropy, Entropy, RngEntropy, Share, splitmix64};
     use crate::seed::Seed;
 
     #[test]
@@ -151,7 +205,7 @@ mod tests {
         ];
 
         for (seed, expected) in cases {
-            let mut rng = Rng::from_seed(Seed::new(seed));
+            let mut rng = RngEntropy::from_seed(Seed::new(seed));
             for value in expected {
                 assert_eq!(rng.next_u64(), value);
             }
@@ -166,7 +220,7 @@ mod tests {
 
     #[test]
     fn below_stays_in_range() {
-        let mut rng = Rng::from_seed(Seed::new(7));
+        let mut rng = RngEntropy::from_seed(Seed::new(7));
         for _ in 0_u32..1_000 {
             assert!(rng.below(10) < 10);
         }
@@ -175,7 +229,7 @@ mod tests {
 
     #[test]
     fn rates_have_fixed_ends() {
-        let mut rng = Rng::from_seed(Seed::new(0));
+        let mut rng = RngEntropy::from_seed(Seed::new(0));
         for _ in 0_u32..100 {
             assert!(!rng.bit(Share::percent(0)));
             assert!(rng.bit(Share::percent(100)));
@@ -184,9 +238,57 @@ mod tests {
 
     #[test]
     fn picks_from_a_slice_and_handles_empty() {
-        let mut rng = Rng::from_seed(Seed::new(1));
+        let mut rng = RngEntropy::from_seed(Seed::new(1));
         let values = ["a", "b", "c"];
         assert!(rng.pick(&values).is_some());
         assert!(rng.pick::<u8>(&[]).is_none());
+    }
+
+    #[test]
+    fn byte_entropy_pins_its_draws() {
+        let mut entropy = BytesEntropy::new(&[0, 1, 2, 3, 4, 5, 6, 7]);
+
+        assert_eq!(entropy.below(u32::MAX), 0x0706_0503);
+        assert_eq!(entropy.remaining(), 0);
+    }
+
+    #[test]
+    fn byte_entropy_zero_pads_a_short_tail() {
+        let mut entropy = BytesEntropy::new(&[0, 1, 2]);
+        assert_eq!(entropy.remaining(), 3);
+
+        assert_eq!(entropy.below(u32::MAX), 0);
+        assert_eq!(entropy.remaining(), 0);
+        assert_eq!(entropy.below(u32::MAX), 0);
+    }
+
+    #[test]
+    fn byte_entropy_is_zero_after_exhaustion() {
+        let mut entropy = BytesEntropy::new(&[]);
+
+        for _ in 0_u32..100 {
+            assert_eq!(entropy.below(10), 0);
+        }
+        assert_eq!(entropy.remaining(), 0);
+    }
+
+    #[test]
+    fn fixed_rates_and_empty_picks_do_not_consume_bytes() {
+        let mut entropy = BytesEntropy::new(&[1, 2, 3, 4, 5, 6, 7, 8]);
+
+        assert!(!entropy.bit(Share::percent(0)));
+        assert!(entropy.bit(Share::percent(100)));
+        assert!(entropy.pick::<u8>(&[]).is_none());
+        assert_eq!(entropy.below(0), 0);
+        assert_eq!(entropy.remaining(), 8);
+    }
+
+    #[test]
+    fn byte_picks_stay_in_bounds() {
+        let mut entropy = BytesEntropy::new(&[0xFF; 8]);
+        let values = ["a", "b", "c"];
+
+        assert!(entropy.pick(&values).is_some());
+        assert_eq!(entropy.remaining(), 0);
     }
 }

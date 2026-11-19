@@ -80,7 +80,8 @@ mod tests {
     use crate::deals::Deals;
     use crate::generate::Config;
     use crate::generate::parts::{Media, build_imp_list};
-    use crate::rng::Rng;
+    use crate::ids::RequestId;
+    use crate::rng::RngEntropy;
     use crate::seed::Seed;
     use crate::wire::RequestModel;
 
@@ -93,7 +94,7 @@ mod tests {
 
     #[test]
     fn seeded_deals_fit_the_cap() {
-        let mut rng = Rng::from_seed(Seed::new(3));
+        let mut rng = RngEntropy::from_seed(Seed::new(3));
         let deals = build_deals(&mut rng, Deals::MAX.count());
 
         assert_eq!(deals.count(), 8);
@@ -102,10 +103,13 @@ mod tests {
     #[test]
     fn knobs_apply_to_every_impression() {
         let mut model = RequestModel::default();
-        let mut rng = Rng::from_seed(Seed::new(1));
+        let mut rng = RngEntropy::from_seed(Seed::new(1));
         model.set_imp(build_imp_list(&mut rng, Media::Banner, 2));
 
-        apply_knobs(&mut model, &Config::new(Seed::new(1), None, Some(Deals::new(2)), None));
+        apply_knobs(
+            &mut model,
+            &Config::new(RequestId::from_seed(Seed::new(1)), None, Some(Deals::new(2)), None),
+        );
 
         for imp in model.impressions().iter() {
             assert!(imp.pmp_for_tests().is_some(), "an imp lost its pmp");

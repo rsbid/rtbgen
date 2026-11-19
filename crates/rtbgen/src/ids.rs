@@ -11,6 +11,9 @@ use core::fmt;
 
 use crate::seed::Seed;
 
+#[cfg(test)]
+use crate::rng::Entropy;
+
 macro_rules! id_type {
     ($(#[$doc:meta])* $name:ident, $format:literal) => {
         $(#[$doc])*
@@ -39,6 +42,18 @@ impl RequestId {
     #[must_use]
     pub(crate) const fn from_seed(seed: Seed) -> Self {
         Self(seed.into_inner())
+    }
+
+    /// Draws a request id from an entropy source.
+    ///
+    /// The id is consumed before the profile distribution, so a byte slice maps
+    /// to exactly one request.
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn from_entropy(entropy: &mut impl Entropy) -> Self {
+        let high = u64::from(entropy.below(u32::MAX));
+        let low = u64::from(entropy.below(u32::MAX));
+        Self((high << 32) | low)
     }
 }
 
@@ -171,7 +186,17 @@ mod tests {
     use super::{
         AppId, BannerId, BuyerUserId, DealId, ImpId, PublisherId, RequestId, SiteId, UserId,
     };
+    use crate::rng::BytesEntropy;
     use crate::seed::Seed;
+
+    #[test]
+    fn entropy_ids_consume_two_draws() {
+        let mut entropy = BytesEntropy::new(&[0; 16]);
+        let id = RequestId::from_entropy(&mut entropy);
+
+        assert_eq!(id.to_string(), "req-000000");
+        assert_eq!(entropy.remaining(), 0);
+    }
 
     #[test]
     fn every_identifier_owns_its_prefix() {

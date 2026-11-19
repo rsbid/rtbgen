@@ -11,7 +11,7 @@ use super::Config;
 /// pair of shapes and why the inventory test walks several seeds instead of one.
 pub(super) fn build(rng: &mut impl Entropy, config: &Config) -> RequestModel {
     let keep_site = rng.bit(Share::percent(50));
-    let mut model = RequestModel::maximal(config.seed());
+    let mut model = RequestModel::maximal(config.id());
 
     if keep_site {
         model.set_app(None);

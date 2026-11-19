@@ -26,7 +26,7 @@ pub(super) fn build(_rng: &mut impl Entropy, config: &Config) -> RequestModel {
     }
 
     let mut request = RequestModel::default();
-    request.set_id(parts::request_id(config.seed()));
+    request.set_id(config.id());
     request.set_imp(imps);
     request
 }

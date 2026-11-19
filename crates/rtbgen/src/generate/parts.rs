@@ -7,11 +7,10 @@
 use crate::code::{AuctionType, Linearity, LocationType, Placement, PlacementPosition};
 use crate::currency::Currency;
 use crate::flag::Flag;
-use crate::ids::{AppId, BannerId, BuyerUserId, ImpId, PublisherId, RequestId, SiteId, UserId};
+use crate::ids::{AppId, BannerId, BuyerUserId, ImpId, PublisherId, SiteId, UserId};
 use crate::money::Money;
 use crate::raw::RawJson;
 use crate::rng::{Entropy, Share};
-use crate::seed::Seed;
 use crate::wire::{
     App, Banner, BannerList, Device, Geo, Imp, ImpList, Native, Publisher, Regs, RequestModel,
     Site, User, Video,
@@ -42,11 +41,6 @@ pub(super) enum Media {
 /// Picks one item, or the fallback for an empty slice.
 pub(super) fn choose<T: Copy>(rng: &mut impl Entropy, values: &[T], fallback: T) -> T {
     rng.pick(values).copied().unwrap_or(fallback)
-}
-
-/// Builds the request id from its seed.
-pub(super) const fn request_id(seed: Seed) -> RequestId {
-    RequestId::from_seed(seed)
 }
 
 /// Returns the resolved impression count of a profile.
@@ -384,7 +378,7 @@ fn build_site_tail(
     let ext = build_request_ext(rng);
 
     let mut request = RequestModel::default();
-    request.set_id(request_id(config.seed()));
+    request.set_id(config.id());
     request.set_imp(*imps);
     request.set_site(Some(site));
     request.set_device(Some(device));
@@ -425,7 +419,7 @@ pub(super) fn build_app_request(
     let ext = build_request_ext(rng);
 
     let mut request = RequestModel::default();
-    request.set_id(request_id(config.seed()));
+    request.set_id(config.id());
     request.set_imp(imps);
     request.set_app(Some(app));
     request.set_device(Some(device));
@@ -446,12 +440,12 @@ mod tests {
     extern crate std;
 
     use super::{Media, build_imp_list, build_mixed_imp_list, choose};
-    use crate::rng::Rng;
+    use crate::rng::RngEntropy;
     use crate::seed::Seed;
 
     #[test]
     fn an_imp_list_has_consecutive_ids() {
-        let mut rng = Rng::from_seed(Seed::new(42));
+        let mut rng = RngEntropy::from_seed(Seed::new(42));
         let imps = build_imp_list(&mut rng, Media::Banner, 3);
         let ids: std::vec::Vec<u64> =
             imps.iter().map(|imp| imp.id_for_tests().into_inner()).collect();
@@ -461,7 +455,7 @@ mod tests {
 
     #[test]
     fn a_mixed_list_cycles_through_three_media_types() {
-        let mut rng = Rng::from_seed(Seed::new(7));
+        let mut rng = RngEntropy::from_seed(Seed::new(7));
         let imps = build_mixed_imp_list(&mut rng, 3);
 
         assert_eq!(imps.count(), 3);
@@ -469,7 +463,7 @@ mod tests {
 
     #[test]
     fn choose_falls_back_on_an_empty_slice() {
-        let mut rng = Rng::from_seed(Seed::new(0));
+        let mut rng = RngEntropy::from_seed(Seed::new(0));
         let picked: u8 = choose(&mut rng, &[], 9);
 
         assert_eq!(picked, 9);

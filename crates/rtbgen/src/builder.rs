@@ -1,6 +1,7 @@
 use crate::deals::Deals;
 use crate::floor::Floor;
 use crate::generate::{self, Config};
+use crate::ids::RequestId;
 use crate::impressions::ImpressionCount;
 use crate::profile::Profile;
 use crate::request::Request;
@@ -86,8 +87,9 @@ impl RequestBuilder {
     /// the same `rtbgen` version.
     #[must_use]
     pub fn build(self) -> Request {
-        let config = Config::new(self.seed, self.impressions, self.deals, self.floor);
-        let model = generate::build(self.profile, &config);
+        let config =
+            Config::new(RequestId::from_seed(self.seed), self.impressions, self.deals, self.floor);
+        let model = generate::build(self.profile, self.seed, &config);
 
         Request::from_model(self.profile, self.seed, self.spec, &model)
     }
