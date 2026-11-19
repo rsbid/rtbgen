@@ -8,22 +8,13 @@ use serde_json::Value;
 const SPEC_FIELDS: [&str; 6] = ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid"];
 
 fn render(profile: Profile, spec: SpecVersion, seed: u64) -> Value {
-    let text = Request::builder(profile)
-        .seed(Seed::new(seed))
-        .spec(spec)
-        .build()
-        .to_json_string();
+    let text = Request::builder(profile).seed(Seed::new(seed)).spec(spec).build().to_json_string();
 
     serde_json::from_str(&text).expect("a generated request is valid JSON")
 }
 
 fn keys(value: &Value) -> Vec<String> {
-    value
-        .as_object()
-        .expect("the request is an object")
-        .keys()
-        .cloned()
-        .collect()
+    value.as_object().expect("the request is an object").keys().cloned().collect()
 }
 
 #[test]
@@ -96,10 +87,7 @@ fn the_media_object_matches_the_profile() {
     for (profile, pointer) in cases {
         let value = render(profile, SpecVersion::V26, 21);
 
-        assert!(
-            value.pointer(pointer).is_some(),
-            "{profile} has no {pointer}"
-        );
+        assert!(value.pointer(pointer).is_some(), "{profile} has no {pointer}");
     }
 }
 
@@ -107,10 +95,8 @@ fn the_media_object_matches_the_profile() {
 fn rewarded_video_is_secure() {
     for seed in [0_u64, 42, u64::MAX] {
         let value = render(Profile::AppRewarded, SpecVersion::V26, seed);
-        let imps = value
-            .pointer("/imp")
-            .and_then(Value::as_array)
-            .expect("the request has impressions");
+        let imps =
+            value.pointer("/imp").and_then(Value::as_array).expect("the request has impressions");
 
         for imp in imps {
             assert_eq!(
@@ -126,12 +112,7 @@ fn rewarded_video_is_secure() {
 fn pmp_deals_carries_a_private_auction() {
     let value = render(Profile::PmpDeals, SpecVersion::V26, 5);
 
-    assert_eq!(
-        value
-            .pointer("/imp/0/pmp/private_auction")
-            .and_then(Value::as_u64),
-        Some(1)
-    );
+    assert_eq!(value.pointer("/imp/0/pmp/private_auction").and_then(Value::as_u64), Some(1));
     let deals = value
         .pointer("/imp/0/pmp/deals")
         .and_then(Value::as_array)
@@ -142,15 +123,10 @@ fn pmp_deals_carries_a_private_auction() {
 #[test]
 fn multi_imp_mixes_media_types() {
     let value = render(Profile::MultiImp, SpecVersion::V26, 9);
-    let imps = value
-        .pointer("/imp")
-        .and_then(Value::as_array)
-        .expect("the request has impressions");
+    let imps =
+        value.pointer("/imp").and_then(Value::as_array).expect("the request has impressions");
 
-    assert!(
-        (2..=3).contains(&imps.len()),
-        "multi_imp has one impression"
-    );
+    assert!((2..=3).contains(&imps.len()), "multi_imp has one impression");
 
     let media = ["banner", "video", "native"];
     let mut seen = Vec::new();
@@ -162,11 +138,7 @@ fn multi_imp_mixes_media_types() {
         }
     }
 
-    assert_eq!(
-        seen.len(),
-        imps.len(),
-        "an impression has two media objects"
-    );
+    assert_eq!(seen.len(), imps.len(), "an impression has two media objects");
     seen.sort_unstable();
     seen.dedup();
     assert_eq!(seen.len(), imps.len(), "multi_imp repeated a media type");
@@ -229,20 +201,14 @@ fn maximal_covers_every_writable_field() {
         "ssai",
         "ext",
     ] {
-        assert!(
-            impressions.iter().any(|seen| seen == key),
-            "no imp.{key} field"
-        );
+        assert!(impressions.iter().any(|seen| seen == key), "no imp.{key} field");
     }
 }
 
 #[test]
 fn v25_drops_exactly_the_26_fields() {
     for profile in Profile::ALL {
-        let v26 = Request::builder(profile)
-            .seed(Seed::new(42))
-            .build()
-            .to_json_string();
+        let v26 = Request::builder(profile).seed(Seed::new(42)).build().to_json_string();
         let v25 = Request::builder(profile)
             .seed(Seed::new(42))
             .spec(SpecVersion::V25)

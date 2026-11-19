@@ -48,9 +48,7 @@ fn write_stdout(text: &str) -> Result<(), Error> {
 }
 
 fn build(generate: &Generate, seed: Seed) -> Request {
-    let mut builder = Request::builder(generate.profile)
-        .seed(seed)
-        .spec(generate.spec);
+    let mut builder = Request::builder(generate.profile).seed(seed).spec(generate.spec);
 
     if let Some(count) = generate.impressions {
         builder = builder.impressions(count);
@@ -74,12 +72,7 @@ fn generate_requests(generate: &Generate) -> Result<(), Error> {
             fs::write(path, request.to_json_string())?;
         }
         let mut out = io::stdout().lock();
-        writeln!(
-            out,
-            "wrote {} requests to {}",
-            generate.count,
-            directory.display()
-        )?;
+        writeln!(out, "wrote {} requests to {}", generate.count, directory.display())?;
         return Ok(());
     }
 
@@ -109,12 +102,7 @@ fn run_corpus(corpus: &Corpus) -> Result<(), Error> {
             fs::write(&path, entry.request().to_json_string())?;
         }
         let mut out = io::stdout().lock();
-        writeln!(
-            out,
-            "wrote {} fixtures to {}",
-            corpus::ALL.len(),
-            corpus.dir.display()
-        )?;
+        writeln!(out, "wrote {} fixtures to {}", corpus::ALL.len(), corpus.dir.display())?;
         return Ok(());
     }
 

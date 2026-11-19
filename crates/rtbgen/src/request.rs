@@ -34,12 +34,7 @@ impl Request {
         spec: SpecVersion,
         model: &RequestModel,
     ) -> Self {
-        Self {
-            profile,
-            seed,
-            spec,
-            model: *model,
-        }
+        Self { profile, seed, spec, model: *model }
     }
 
     /// Returns the profile the request was generated from.

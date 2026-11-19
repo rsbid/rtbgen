@@ -55,9 +55,6 @@ mod tests {
 
     #[test]
     fn the_cap_is_the_wire_cap() {
-        assert_eq!(
-            usize::from(ImpressionCount::MAX.count()),
-            crate::wire::MAX_IMPRESSIONS
-        );
+        assert_eq!(usize::from(ImpressionCount::MAX.count()), crate::wire::MAX_IMPRESSIONS);
     }
 }

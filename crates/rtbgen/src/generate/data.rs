@@ -13,32 +13,13 @@ use crate::currency::Currency;
 use crate::flag::Flag;
 use crate::raw::RawJson;
 
-pub(super) const DEFAULT_SITE: (&str, &str, &str, &str) = (
-    "example.com",
-    "Example News",
-    "https://example.com/news/42",
-    "news,sports",
-);
+pub(super) const DEFAULT_SITE: (&str, &str, &str, &str) =
+    ("example.com", "Example News", "https://example.com/news/42", "news,sports");
 pub(super) const SITES: &[(&str, &str, &str, &str)] = &[
     DEFAULT_SITE,
-    (
-        "news.example",
-        "Example Daily",
-        "https://news.example/weather/today",
-        "weather,local",
-    ),
-    (
-        "shop.example",
-        "Example Shop",
-        "https://shop.example/item/7",
-        "deals,shopping",
-    ),
-    (
-        "publisher.test",
-        "Example Sports",
-        "https://publisher.test/scores/42",
-        "sports,scores",
-    ),
+    ("news.example", "Example Daily", "https://news.example/weather/today", "weather,local"),
+    ("shop.example", "Example Shop", "https://shop.example/item/7", "deals,shopping"),
+    ("publisher.test", "Example Sports", "https://publisher.test/scores/42", "sports,scores"),
 ];
 pub(super) const PUBLISHER_NAMES: &[&str] = &["Example Media", "Example Publishing"];
 pub(super) const SITE_CAT: &[&str] = &["IAB1"];
@@ -47,13 +28,8 @@ pub(super) const BCAT: &[&str] = &["IAB1", "IAB2"];
 pub(super) const BADV: &[&str] = &["bad.example", "spam.test"];
 pub(super) const BAPP: &[&str] = &["bad.app", "spam.example"];
 
-pub(super) const DEFAULT_APP: (&str, &str, &str, &str, &str) = (
-    "com.example.app",
-    "Example App",
-    "app.example",
-    "https://apps.example/app",
-    "games",
-);
+pub(super) const DEFAULT_APP: (&str, &str, &str, &str, &str) =
+    ("com.example.app", "Example App", "app.example", "https://apps.example/app", "games");
 pub(super) const APPS: &[(&str, &str, &str, &str, &str)] = &[
     DEFAULT_APP,
     (
@@ -73,14 +49,8 @@ pub(super) const APPS: &[(&str, &str, &str, &str, &str)] = &[
 ];
 pub(super) const APP_VERSIONS: &[&str] = &["1.2.3", "2.0.0", "3.4.1"];
 
-pub(super) type DeviceProfile = (
-    &'static str,
-    &'static str,
-    &'static str,
-    &'static str,
-    &'static str,
-    DeviceType,
-);
+pub(super) type DeviceProfile =
+    (&'static str, &'static str, &'static str, &'static str, &'static str, DeviceType);
 pub(super) const DEFAULT_DEVICE: DeviceProfile = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
     "Dell",
@@ -139,20 +109,16 @@ pub(super) const GEOS: &[(&str, &str, &str, &str)] = &[
 pub(super) const LANGUAGES: &[&str] = &["en", "ru", "de"];
 pub(super) const DEFAULT_CONSENT: &str =
     "CPX0000000000000000000000000000000000000000000000000000000000000";
-pub(super) const CONSENTS: &[&str] = &[
-    DEFAULT_CONSENT,
-    "CPX1111111111111111111111111111111111111111111111111111111111111",
-];
+pub(super) const CONSENTS: &[&str] =
+    &[DEFAULT_CONSENT, "CPX1111111111111111111111111111111111111111111111111111111111111"];
 pub(super) const GPP: &str =
     "DBABMA~CPX0000000000000000000000000000000000000000000000000000000000000";
 pub(super) const GPP_SID: &[GppSectionId] = &[GppSectionId::TCF_EU_V2];
 
 pub(super) const BANNER_MIMES: &[&str] = &["image/jpeg", "image/png"];
 pub(super) const BANNER_BTYPE: &[BannerType] = &[BannerType::IFRAME];
-pub(super) const BANNER_BATTR: &[CreativeAttribute] = &[
-    CreativeAttribute::AUDIO_AUTOPLAY,
-    CreativeAttribute::AUDIO_USER_INITIATED,
-];
+pub(super) const BANNER_BATTR: &[CreativeAttribute] =
+    &[CreativeAttribute::AUDIO_AUTOPLAY, CreativeAttribute::AUDIO_USER_INITIATED];
 pub(super) const BANNER_EXPDIR: &[ExpandableDirection] =
     &[ExpandableDirection::LEFT, ExpandableDirection::UP];
 pub(super) const BANNER_API: &[ApiFramework] = &[ApiFramework::MRAID_1, ApiFramework::MRAID_2];
@@ -178,19 +144,12 @@ pub(super) const DEFAULT_VIDEO_FORMAT: VideoFormat =
     (&["video/mp4"], &[Protocol::VAST_2_0, Protocol::VAST_3_0]);
 pub(super) const VIDEO_FORMATS: &[VideoFormat] = &[
     DEFAULT_VIDEO_FORMAT,
-    (
-        &["video/mp4", "video/webm"],
-        &[Protocol::VAST_3_0, Protocol::VAST_4_0],
-    ),
+    (&["video/mp4", "video/webm"], &[Protocol::VAST_3_0, Protocol::VAST_4_0]),
 ];
 pub(super) const VIDEO_SIZES: &[(u32, u32)] = &[(640, 480), (1280, 720), (1920, 1080)];
 pub(super) const VIDEO_DURATIONS: &[(u32, u32)] = &[(5, 15), (15, 30), (30, 60)];
-pub(super) const VIDEO_PLACEMENTS: &[Placement] = &[
-    Placement::IN_STREAM,
-    Placement::IN_ARTICLE,
-    Placement::IN_FEED,
-    Placement::INTERSTITIAL,
-];
+pub(super) const VIDEO_PLACEMENTS: &[Placement] =
+    &[Placement::IN_STREAM, Placement::IN_ARTICLE, Placement::IN_FEED, Placement::INTERSTITIAL];
 pub(super) const VIDEO_DELIVERY: &[DeliveryMethod] = &[DeliveryMethod::PROGRESSIVE];
 pub(super) const COMPANION_TYPES: &[CompanionType] = &[CompanionType::STATIC];
 

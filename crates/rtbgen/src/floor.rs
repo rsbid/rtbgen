@@ -21,19 +21,13 @@ impl Floor {
     /// result is rounded half up.
     #[must_use]
     pub fn cpm(cpm: f64, currency: Currency) -> Self {
-        Self {
-            money: Money::from_cpm(cpm),
-            currency,
-        }
+        Self { money: Money::from_cpm(cpm), currency }
     }
 
     /// Builds a floor from the fixed-scale representation, for the corpus.
     #[must_use]
     pub(crate) const fn from_scaled(scaled: i64, currency: Currency) -> Self {
-        Self {
-            money: Money::from_scaled(scaled),
-            currency,
-        }
+        Self { money: Money::from_scaled(scaled), currency }
     }
 
     /// Returns the fixed-scale amount.

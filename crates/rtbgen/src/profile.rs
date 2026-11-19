@@ -81,10 +81,7 @@ impl Profile {
     ///
     /// Returns [`UnknownProfile`] when `name` is not one of [`Profile::ALL`]'s names.
     pub fn from_name(name: &str) -> Result<Self, UnknownProfile> {
-        Self::ALL
-            .into_iter()
-            .find(|profile| profile.name() == name)
-            .ok_or(UnknownProfile)
+        Self::ALL.into_iter().find(|profile| profile.name() == name).ok_or(UnknownProfile)
     }
 }
 
@@ -138,28 +135,18 @@ mod tests {
         for profile in Profile::ALL {
             let name = profile.name();
             assert!(
-                name.bytes()
-                    .all(|byte| byte.is_ascii_lowercase() || byte == b'_'),
+                name.bytes().all(|byte| byte.is_ascii_lowercase() || byte == b'_'),
                 "{name} is not snake_case"
             );
-            assert!(
-                names.iter().all(|seen| *seen != name),
-                "{name} is a duplicate"
-            );
+            assert!(names.iter().all(|seen| *seen != name), "{name} is a duplicate");
             names.push(name);
         }
     }
 
     #[test]
     fn unknown_and_malformed_names_are_rejected() {
-        assert!(matches!(
-            Profile::from_name("AppRewarded"),
-            Err(UnknownProfile)
-        ));
-        assert!(matches!(
-            Profile::from_name("app-rewarded"),
-            Err(UnknownProfile)
-        ));
+        assert!(matches!(Profile::from_name("AppRewarded"), Err(UnknownProfile)));
+        assert!(matches!(Profile::from_name("app-rewarded"), Err(UnknownProfile)));
         assert!(matches!(Profile::from_name(""), Err(UnknownProfile)));
     }
 
@@ -169,11 +156,7 @@ mod tests {
         let message = std::format!("{error}");
 
         for profile in Profile::ALL {
-            assert!(
-                message.contains(profile.name()),
-                "{message} does not list {}",
-                profile.name()
-            );
+            assert!(message.contains(profile.name()), "{message} does not list {}", profile.name());
         }
     }
 }

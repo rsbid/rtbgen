@@ -48,10 +48,7 @@ impl SpecVersion {
     /// Returns [`UnknownSpecVersion`] when `name` is not one of
     /// [`SpecVersion::ALL`]'s names.
     pub fn from_name(name: &str) -> Result<Self, UnknownSpecVersion> {
-        Self::ALL
-            .into_iter()
-            .find(|version| version.name() == name)
-            .ok_or(UnknownSpecVersion)
+        Self::ALL.into_iter().find(|version| version.name() == name).ok_or(UnknownSpecVersion)
     }
 }
 
@@ -110,32 +107,19 @@ mod tests {
         for version in SpecVersion::ALL {
             let name = version.name();
             assert!(
-                name.bytes()
-                    .all(|byte| byte.is_ascii_digit() || byte == b'.'),
+                name.bytes().all(|byte| byte.is_ascii_digit() || byte == b'.'),
                 "{name} is not a dotted revision"
             );
-            assert!(
-                names.iter().all(|seen| *seen != name),
-                "{name} is a duplicate"
-            );
+            assert!(names.iter().all(|seen| *seen != name), "{name} is a duplicate");
             names.push(name);
         }
     }
 
     #[test]
     fn unsupported_revisions_are_rejected() {
-        assert!(matches!(
-            SpecVersion::from_name("2.7"),
-            Err(UnknownSpecVersion)
-        ));
-        assert!(matches!(
-            SpecVersion::from_name("v26"),
-            Err(UnknownSpecVersion)
-        ));
-        assert!(matches!(
-            SpecVersion::from_name(""),
-            Err(UnknownSpecVersion)
-        ));
+        assert!(matches!(SpecVersion::from_name("2.7"), Err(UnknownSpecVersion)));
+        assert!(matches!(SpecVersion::from_name("v26"), Err(UnknownSpecVersion)));
+        assert!(matches!(SpecVersion::from_name(""), Err(UnknownSpecVersion)));
     }
 
     #[test]
@@ -144,11 +128,7 @@ mod tests {
         let message = std::format!("{error}");
 
         for version in SpecVersion::ALL {
-            assert!(
-                message.contains(version.name()),
-                "{message} does not list {}",
-                version.name()
-            );
+            assert!(message.contains(version.name()), "{message} does not list {}", version.name());
         }
     }
 }

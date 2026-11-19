@@ -77,9 +77,7 @@ impl CorpusEntry {
     /// Regenerates the fixture.
     #[must_use]
     pub fn request(self) -> Request {
-        let mut builder = Request::builder(self.profile)
-            .seed(self.seed)
-            .spec(self.spec);
+        let mut builder = Request::builder(self.profile).seed(self.seed).spec(self.spec);
 
         if let Some(count) = self.impressions {
             builder = builder.impressions(count);
@@ -133,68 +131,18 @@ const fn with_floor_in(
 
 /// Every golden fixture, in the order the manifest lists them.
 pub const ALL: &[CorpusEntry] = &[
-    entry(
-        "site_display-v26-0",
-        SpecVersion::V26,
-        Profile::SiteDisplay,
-        0,
-    ),
-    entry(
-        "site_display-v26-42",
-        SpecVersion::V26,
-        Profile::SiteDisplay,
-        42,
-    ),
-    entry(
-        "site_display-v26-max",
-        SpecVersion::V26,
-        Profile::SiteDisplay,
-        u64::MAX,
-    ),
-    entry(
-        "site_display-v25-42",
-        SpecVersion::V25,
-        Profile::SiteDisplay,
-        42,
-    ),
+    entry("site_display-v26-0", SpecVersion::V26, Profile::SiteDisplay, 0),
+    entry("site_display-v26-42", SpecVersion::V26, Profile::SiteDisplay, 42),
+    entry("site_display-v26-max", SpecVersion::V26, Profile::SiteDisplay, u64::MAX),
+    entry("site_display-v25-42", SpecVersion::V25, Profile::SiteDisplay, 42),
     entry("site_video-v26-7", SpecVersion::V26, Profile::SiteVideo, 7),
     entry("site_video-v25-7", SpecVersion::V25, Profile::SiteVideo, 7),
-    entry(
-        "site_native-v26-3",
-        SpecVersion::V26,
-        Profile::SiteNative,
-        3,
-    ),
-    entry(
-        "site_native-v25-3",
-        SpecVersion::V25,
-        Profile::SiteNative,
-        3,
-    ),
-    entry(
-        "app_rewarded-v26-42",
-        SpecVersion::V26,
-        Profile::AppRewarded,
-        42,
-    ),
-    entry(
-        "app_rewarded-v25-42",
-        SpecVersion::V25,
-        Profile::AppRewarded,
-        42,
-    ),
-    entry(
-        "app_banner-v26-11",
-        SpecVersion::V26,
-        Profile::AppBanner,
-        11,
-    ),
-    entry(
-        "app_banner-v25-11",
-        SpecVersion::V25,
-        Profile::AppBanner,
-        11,
-    ),
+    entry("site_native-v26-3", SpecVersion::V26, Profile::SiteNative, 3),
+    entry("site_native-v25-3", SpecVersion::V25, Profile::SiteNative, 3),
+    entry("app_rewarded-v26-42", SpecVersion::V26, Profile::AppRewarded, 42),
+    entry("app_rewarded-v25-42", SpecVersion::V25, Profile::AppRewarded, 42),
+    entry("app_banner-v26-11", SpecVersion::V26, Profile::AppBanner, 11),
+    entry("app_banner-v25-11", SpecVersion::V25, Profile::AppBanner, 11),
     entry("pmp_deals-v26-5", SpecVersion::V26, Profile::PmpDeals, 5),
     entry("pmp_deals-v25-5", SpecVersion::V25, Profile::PmpDeals, 5),
     entry("multi_imp-v26-9", SpecVersion::V26, Profile::MultiImp, 9),
@@ -208,12 +156,7 @@ pub const ALL: &[CorpusEntry] = &[
     with_floor(
         with_deals(
             with_impressions(
-                entry(
-                    "knobs-app-rewarded-v26-42",
-                    SpecVersion::V26,
-                    Profile::AppRewarded,
-                    42,
-                ),
+                entry("knobs-app-rewarded-v26-42", SpecVersion::V26, Profile::AppRewarded, 42),
                 2,
             ),
             3,
@@ -223,12 +166,7 @@ pub const ALL: &[CorpusEntry] = &[
     with_floor_in(
         with_deals(
             with_impressions(
-                entry(
-                    "knobs-site-display-v25-8",
-                    SpecVersion::V25,
-                    Profile::SiteDisplay,
-                    8,
-                ),
+                entry("knobs-site-display-v25-8", SpecVersion::V25, Profile::SiteDisplay, 8),
                 3,
             ),
             1,
@@ -238,36 +176,18 @@ pub const ALL: &[CorpusEntry] = &[
     ),
     with_deals(
         with_impressions(
-            entry(
-                "knobs-multi-imp-v26-13",
-                SpecVersion::V26,
-                Profile::MultiImp,
-                13,
-            ),
+            entry("knobs-multi-imp-v26-13", SpecVersion::V26, Profile::MultiImp, 13),
             1,
         ),
         8,
     ),
     with_floor(
-        with_deals(
-            entry(
-                "knobs-pmp-deals-v26-12",
-                SpecVersion::V26,
-                Profile::PmpDeals,
-                12,
-            ),
-            8,
-        ),
+        with_deals(entry("knobs-pmp-deals-v26-12", SpecVersion::V26, Profile::PmpDeals, 12), 8),
         30_000,
     ),
     with_floor_in(
         with_impressions(
-            entry(
-                "knobs-site-video-v26-6",
-                SpecVersion::V26,
-                Profile::SiteVideo,
-                6,
-            ),
+            entry("knobs-site-video-v26-6", SpecVersion::V26, Profile::SiteVideo, 6),
             2,
         ),
         5_000,
@@ -275,12 +195,7 @@ pub const ALL: &[CorpusEntry] = &[
     ),
     with_deals(
         with_impressions(
-            entry(
-                "knobs-app-banner-v25-4",
-                SpecVersion::V25,
-                Profile::AppBanner,
-                4,
-            ),
+            entry("knobs-app-banner-v25-4", SpecVersion::V25, Profile::AppBanner, 4),
             2,
         ),
         2,
@@ -308,11 +223,7 @@ mod tests {
                 "{} is not a safe file stem",
                 entry.name()
             );
-            assert!(
-                !names.contains(&entry.name()),
-                "{} is listed twice",
-                entry.name()
-            );
+            assert!(!names.contains(&entry.name()), "{} is listed twice", entry.name());
             names.push(entry.name());
         }
     }
@@ -322,8 +233,7 @@ mod tests {
         for profile in Profile::ALL {
             for spec in SpecVersion::ALL {
                 assert!(
-                    ALL.iter()
-                        .any(|entry| entry.profile() == profile && entry.spec() == spec),
+                    ALL.iter().any(|entry| entry.profile() == profile && entry.spec() == spec),
                     "{profile} has no {spec} golden"
                 );
             }

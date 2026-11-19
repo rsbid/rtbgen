@@ -26,11 +26,7 @@ impl Share {
     #[must_use]
     pub(crate) const fn percent(percent: u16) -> Self {
         let basis_points = percent.saturating_mul(100);
-        Self(if basis_points > Self::MAX {
-            Self::MAX
-        } else {
-            basis_points
-        })
+        Self(if basis_points > Self::MAX { Self::MAX } else { basis_points })
     }
 
     #[must_use]

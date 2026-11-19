@@ -64,11 +64,7 @@ impl Money {
         }
 
         let scaled = cpm * 10_000.0_f64 + 0.5_f64;
-        let capped = if scaled > Self::MAX_SCALED {
-            Self::MAX_SCALED
-        } else {
-            scaled
-        };
+        let capped = if scaled > Self::MAX_SCALED { Self::MAX_SCALED } else { scaled };
 
         // The value is finite, non-negative and capped; `truncated_to_u64`
         // recovers the integer part without an `as` cast.
@@ -167,11 +163,7 @@ mod tests {
         ];
 
         for (cpm, expected) in cases {
-            assert_eq!(
-                Money::from_cpm(cpm).to_string(),
-                expected,
-                "cpm {cpm} formatted wrong"
-            );
+            assert_eq!(Money::from_cpm(cpm).to_string(), expected, "cpm {cpm} formatted wrong");
         }
     }
 

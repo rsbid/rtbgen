@@ -23,11 +23,7 @@ pub(super) fn build_deals(rng: &mut impl Entropy, count: u8) -> DealList {
         let mut deal = Deal::new(DealId::new(u64::from(index)));
         deal.set_bidfloor(Some(Money::from_scaled(choose(rng, FLOORS, 15_000))));
         deal.set_bidfloorcur(Some(Currency::USD));
-        deal.set_at(Some(choose(
-            rng,
-            DEAL_AT,
-            DealAuctionType::SECOND_PRICE_PLUS,
-        )));
+        deal.set_at(Some(choose(rng, DEAL_AT, DealAuctionType::SECOND_PRICE_PLUS)));
         if rng.bit(Share::percent(40)) {
             deal.set_wadomain(choose(rng, ADV_DOMAINS, &["adv.example"]));
         }
@@ -52,9 +48,7 @@ pub(super) fn build_fixed_deals(count: u8) -> DealList {
         let floor = offset.and_then(|value| DEAL_FLOORS.get(value)).copied();
         deal.set_bidfloor(Some(Money::from_scaled(floor.unwrap_or(15_000))));
         deal.set_bidfloorcur(Some(Currency::USD));
-        let slot = offset
-            .and_then(|value| value.checked_rem(DEAL_AT.len()))
-            .unwrap_or(0);
+        let slot = offset.and_then(|value| value.checked_rem(DEAL_AT.len())).unwrap_or(0);
         let at = DEAL_AT.get(slot).copied();
         deal.set_at(Some(at.unwrap_or(DealAuctionType::SECOND_PRICE_PLUS)));
         deals.push(&deal);
@@ -111,10 +105,7 @@ mod tests {
         let mut rng = Rng::from_seed(Seed::new(1));
         model.set_imp(build_imp_list(&mut rng, Media::Banner, 2));
 
-        apply_knobs(
-            &mut model,
-            &Config::new(Seed::new(1), None, Some(Deals::new(2)), None),
-        );
+        apply_knobs(&mut model, &Config::new(Seed::new(1), None, Some(Deals::new(2)), None));
 
         for imp in model.impressions().iter() {
             assert!(imp.pmp_for_tests().is_some(), "an imp lost its pmp");

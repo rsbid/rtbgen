@@ -16,17 +16,10 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    let deals = value
-        .pointer("/imp/0/pmp/deals")
-        .and_then(serde_json::Value::as_array);
-    assert!(
-        matches!(deals.map(Vec::len), Some(4)),
-        "the deal knob did not add four deals"
-    );
+    let deals = value.pointer("/imp/0/pmp/deals").and_then(serde_json::Value::as_array);
+    assert!(matches!(deals.map(Vec::len), Some(4)), "the deal knob did not add four deals");
     assert_eq!(
-        value
-            .pointer("/imp/0/bidfloorcur")
-            .and_then(serde_json::Value::as_str),
+        value.pointer("/imp/0/bidfloorcur").and_then(serde_json::Value::as_str),
         Some("EUR"),
         "the floor knob did not set the currency"
     );

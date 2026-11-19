@@ -16,12 +16,7 @@ fn corpus_matches_generator() {
         let expected = fs::read_to_string(&path).expect("the corpus file exists");
         let actual = entry.request().to_json_string();
 
-        assert_eq!(
-            actual,
-            expected,
-            "{} differs from the generator",
-            entry.name()
-        );
+        assert_eq!(actual, expected, "{} differs from the generator", entry.name());
 
         let value: Value = serde_json::from_str(&actual).expect("a corpus file is valid JSON");
         assert!(value.pointer("/id").is_some(), "{} has no id", entry.name());
@@ -31,11 +26,7 @@ fn corpus_matches_generator() {
 #[test]
 fn the_manifest_lists_every_entry_and_nothing_else() {
     let manifest = parse_manifest();
-    assert_eq!(
-        manifest.len(),
-        corpus::ALL.len(),
-        "the manifest size differs"
-    );
+    assert_eq!(manifest.len(), corpus::ALL.len(), "the manifest size differs");
 
     for entry in corpus::ALL {
         let listed = manifest
@@ -46,24 +37,9 @@ fn the_manifest_lists_every_entry_and_nothing_else() {
         assert_eq!(listed.spec, entry.spec().name(), "{}", entry.name());
         assert_eq!(listed.profile, entry.profile().name(), "{}", entry.name());
         assert_eq!(listed.seed, entry.seed().into_inner(), "{}", entry.name());
-        assert_eq!(
-            listed.knobs & 1 != 0,
-            entry.impressions().is_some(),
-            "{}",
-            entry.name()
-        );
-        assert_eq!(
-            listed.knobs & 2 != 0,
-            entry.deals().is_some(),
-            "{}",
-            entry.name()
-        );
-        assert_eq!(
-            listed.knobs & 4 != 0,
-            entry.floor().is_some(),
-            "{}",
-            entry.name()
-        );
+        assert_eq!(listed.knobs & 1 != 0, entry.impressions().is_some(), "{}", entry.name());
+        assert_eq!(listed.knobs & 2 != 0, entry.deals().is_some(), "{}", entry.name());
+        assert_eq!(listed.knobs & 4 != 0, entry.floor().is_some(), "{}", entry.name());
     }
 }
 
@@ -160,9 +136,7 @@ fn every_spec_version_and_profile_has_a_golden() {
     for profile in Profile::ALL {
         for spec in SpecVersion::ALL {
             assert!(
-                corpus::ALL
-                    .iter()
-                    .any(|entry| entry.profile() == profile && entry.spec() == spec),
+                corpus::ALL.iter().any(|entry| entry.profile() == profile && entry.spec() == spec),
                 "{profile} has no {spec} golden"
             );
         }
@@ -176,10 +150,8 @@ fn the_seed_alone_reproduces_a_corpus_entry() {
         .find(|entry| entry.name() == "site_display-v26-42")
         .expect("the canonical site_display entry exists");
 
-    let rebuilt = rtbgen::Request::builder(Profile::SiteDisplay)
-        .seed(Seed::new(42))
-        .build()
-        .to_json_string();
+    let rebuilt =
+        rtbgen::Request::builder(Profile::SiteDisplay).seed(Seed::new(42)).build().to_json_string();
 
     assert_eq!(rebuilt, entry.request().to_json_string());
 }

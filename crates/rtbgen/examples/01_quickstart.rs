@@ -5,10 +5,7 @@ use std::process::ExitCode;
 
 use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed};
 
-#[expect(
-    clippy::redundant_type_annotations,
-    reason = "the canonical snippet spells the type out"
-)]
+#[expect(clippy::redundant_type_annotations, reason = "the canonical snippet spells the type out")]
 fn main() -> ExitCode {
     let req = Request::builder(Profile::AppRewarded)
         .seed(Seed::new(42))

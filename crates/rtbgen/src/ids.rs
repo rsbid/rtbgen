@@ -176,14 +176,8 @@ mod tests {
     #[test]
     fn every_identifier_owns_its_prefix() {
         let cases = [
-            (
-                RequestId::from_seed(Seed::new(42)).to_string(),
-                "req-000042",
-            ),
-            (
-                RequestId::from_seed(Seed::new(u64::MAX)).to_string(),
-                "req-18446744073709551615",
-            ),
+            (RequestId::from_seed(Seed::new(42)).to_string(), "req-000042"),
+            (RequestId::from_seed(Seed::new(u64::MAX)).to_string(), "req-18446744073709551615"),
             (ImpId::new(7).to_string(), "7"),
             (DealId::new(1).to_string(), "deal-1"),
             (BannerId::new(7).to_string(), "b7"),

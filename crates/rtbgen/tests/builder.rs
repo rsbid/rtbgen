@@ -42,14 +42,10 @@ fn the_impressions_knob_works_on_every_profile() {
 fn the_impressions_knob_clamps() {
     for profile in [Profile::SiteDisplay, Profile::MultiImp, Profile::Sparse] {
         let low = render(
-            Request::builder(profile)
-                .seed(Seed::new(1))
-                .impressions(ImpressionCount::new(0)),
+            Request::builder(profile).seed(Seed::new(1)).impressions(ImpressionCount::new(0)),
         );
         let high = render(
-            Request::builder(profile)
-                .seed(Seed::new(1))
-                .impressions(ImpressionCount::new(u8::MAX)),
+            Request::builder(profile).seed(Seed::new(1)).impressions(ImpressionCount::new(u8::MAX)),
         );
 
         assert_eq!(impressions(&low), 1);
@@ -61,11 +57,8 @@ fn the_impressions_knob_clamps() {
 fn the_deals_knob_adds_a_marketplace_to_every_profile() {
     for profile in Profile::ALL {
         for count in [1_u8, 3, 8] {
-            let value = render(
-                Request::builder(profile)
-                    .seed(Seed::new(7))
-                    .deals(Deals::new(count)),
-            );
+            let value =
+                render(Request::builder(profile).seed(Seed::new(7)).deals(Deals::new(count)));
 
             let imps = value
                 .pointer("/imp")
@@ -82,11 +75,7 @@ fn the_deals_knob_adds_a_marketplace_to_every_profile() {
                     .pointer("/pmp/deals")
                     .and_then(Value::as_array)
                     .expect("the marketplace has deals");
-                assert_eq!(
-                    deals.len(),
-                    usize::from(count),
-                    "{profile} has the wrong deal count"
-                );
+                assert_eq!(deals.len(), usize::from(count), "{profile} has the wrong deal count");
             }
         }
     }
@@ -94,11 +83,8 @@ fn the_deals_knob_adds_a_marketplace_to_every_profile() {
 
 #[test]
 fn the_deals_knob_clamps_to_one() {
-    let value = render(
-        Request::builder(Profile::AppBanner)
-            .seed(Seed::new(0))
-            .deals(Deals::new(0)),
-    );
+    let value =
+        render(Request::builder(Profile::AppBanner).seed(Seed::new(0)).deals(Deals::new(0)));
     let deals = value
         .pointer("/imp/0/pmp/deals")
         .and_then(Value::as_array)
@@ -111,15 +97,11 @@ fn the_deals_knob_clamps_to_one() {
 fn the_floor_knob_overrides_every_impression() {
     for profile in Profile::ALL {
         let value = render(
-            Request::builder(profile)
-                .seed(Seed::new(3))
-                .floor(Floor::cpm(1.5, Currency::EUR)),
+            Request::builder(profile).seed(Seed::new(3)).floor(Floor::cpm(1.5, Currency::EUR)),
         );
 
-        let imps = value
-            .pointer("/imp")
-            .and_then(Value::as_array)
-            .expect("the request has impressions");
+        let imps =
+            value.pointer("/imp").and_then(Value::as_array).expect("the request has impressions");
 
         for imp in imps {
             assert_eq!(
@@ -139,11 +121,7 @@ fn the_floor_knob_overrides_every_impression() {
 #[test]
 fn the_spec_knob_keeps_the_profile_shape() {
     for profile in Profile::ALL {
-        let v25 = render(
-            Request::builder(profile)
-                .seed(Seed::new(4))
-                .spec(SpecVersion::V25),
-        );
+        let v25 = render(Request::builder(profile).seed(Seed::new(4)).spec(SpecVersion::V25));
 
         assert!(v25.pointer("/id").is_some());
         assert!(v25.pointer("/imp").is_some());
@@ -168,17 +146,9 @@ fn the_canonical_configuration_builds() {
     assert_eq!(impressions(&value), 2);
     assert!(value.pointer("/app").is_some());
 
-    for imp in value
-        .pointer("/imp")
-        .and_then(Value::as_array)
-        .expect("the request has impressions")
+    for imp in value.pointer("/imp").and_then(Value::as_array).expect("the request has impressions")
     {
-        assert_eq!(
-            imp.pointer("/pmp/deals")
-                .and_then(Value::as_array)
-                .map(Vec::len),
-            Some(3)
-        );
+        assert_eq!(imp.pointer("/pmp/deals").and_then(Value::as_array).map(Vec::len), Some(3));
         assert_eq!(imp.pointer("/bidfloor"), Some(&serde_json::json!(1.5_f64)));
     }
 }
@@ -186,9 +156,7 @@ fn the_canonical_configuration_builds() {
 #[test]
 fn the_default_seed_is_zero_and_reproducible() {
     let first = Request::builder(Profile::SiteVideo).build();
-    let second = Request::builder(Profile::SiteVideo)
-        .seed(Seed::new(0))
-        .build();
+    let second = Request::builder(Profile::SiteVideo).seed(Seed::new(0)).build();
 
     assert_eq!(first.seed(), Seed::new(0));
     assert_eq!(first.to_json_string(), second.to_json_string());
@@ -197,11 +165,8 @@ fn the_default_seed_is_zero_and_reproducible() {
 #[test]
 fn knobs_do_not_change_the_unrelated_fields() {
     let plain = render(Request::builder(Profile::SiteDisplay).seed(Seed::new(42)));
-    let with_deals = render(
-        Request::builder(Profile::SiteDisplay)
-            .seed(Seed::new(42))
-            .deals(Deals::new(2)),
-    );
+    let with_deals =
+        render(Request::builder(Profile::SiteDisplay).seed(Seed::new(42)).deals(Deals::new(2)));
 
     assert_eq!(plain.pointer("/site"), with_deals.pointer("/site"));
     assert_eq!(plain.pointer("/device"), with_deals.pointer("/device"));

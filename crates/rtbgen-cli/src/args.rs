@@ -84,12 +84,7 @@ struct Parser<I> {
 
 impl<I: Iterator<Item = String>> Parser<I> {
     fn new(args: I) -> Self {
-        Self {
-            args,
-            generate: Generate::default(),
-            floor_cpm: None,
-            currency: Currency::USD,
-        }
+        Self { args, generate: Generate::default(), floor_cpm: None, currency: Currency::USD }
     }
 
     fn run(mut self) -> Result<Command, Error> {
@@ -173,9 +168,7 @@ where
     T: std::str::FromStr,
     T::Err: fmt::Display,
 {
-    value
-        .parse::<T>()
-        .map_err(|error| Error::invalid(flag, value.to_owned(), &error))
+    value.parse::<T>().map_err(|error| Error::invalid(flag, value.to_owned(), &error))
 }
 
 fn parse_corpus(mut args: impl Iterator<Item = String>) -> Result<Command, Error> {
@@ -199,10 +192,7 @@ fn parse_corpus(mut args: impl Iterator<Item = String>) -> Result<Command, Error
         return Err(Error::ConflictingModes);
     }
 
-    Ok(Command::Corpus(Corpus {
-        dir: directory,
-        write,
-    }))
+    Ok(Command::Corpus(Corpus { dir: directory, write }))
 }
 
 /// What went wrong before a command could run.
@@ -213,11 +203,7 @@ pub(crate) enum Error {
     /// A flag that takes a value was the last argument.
     MissingValue(&'static str),
     /// A flag value could not be parsed.
-    InvalidValue {
-        flag: &'static str,
-        value: Box<str>,
-        reason: Box<str>,
-    },
+    InvalidValue { flag: &'static str, value: Box<str>, reason: Box<str> },
     /// An argument was not valid UTF-8.
     NonUnicode,
     /// `--write` and `--verify` were given together.
@@ -249,11 +235,9 @@ impl fmt::Display for Error {
         match self {
             Self::UnknownArgument(argument) => write!(f, "unexpected argument `{argument}`"),
             Self::MissingValue(flag) => write!(f, "`{flag}` needs a value"),
-            Self::InvalidValue {
-                flag,
-                value,
-                reason,
-            } => write!(f, "invalid value `{value}` for `{flag}`: {reason}"),
+            Self::InvalidValue { flag, value, reason } => {
+                write!(f, "invalid value `{value}` for `{flag}`: {reason}")
+            }
             Self::NonUnicode => f.write_str("arguments must be valid UTF-8"),
             Self::ConflictingModes => f.write_str("`--write` and `--verify` cannot be combined"),
             Self::CorpusMismatch(count) => {
@@ -319,14 +303,8 @@ mod tests {
 
     #[test]
     fn unknown_flags_and_bad_values_are_errors() {
-        assert!(matches!(
-            parse_command(&["--degrade", "5%"]),
-            Err(Error::UnknownArgument(_))
-        ));
-        assert!(matches!(
-            parse_command(&["--seed"]),
-            Err(Error::MissingValue("--seed"))
-        ));
+        assert!(matches!(parse_command(&["--degrade", "5%"]), Err(Error::UnknownArgument(_))));
+        assert!(matches!(parse_command(&["--seed"]), Err(Error::MissingValue("--seed"))));
         assert!(matches!(
             parse_command(&["--profile", "AppRewarded"]),
             Err(Error::InvalidValue { .. })

@@ -85,10 +85,7 @@ pub(crate) struct BannerList {
 
 impl Default for BannerList {
     fn default() -> Self {
-        Self {
-            items: [Banner::default(); MAX_COMPANIONS],
-            len: 0,
-        }
+        Self { items: [Banner::default(); MAX_COMPANIONS], len: 0 }
     }
 }
 

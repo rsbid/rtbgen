@@ -42,12 +42,7 @@ impl Config {
         deals: Option<Deals>,
         floor: Option<Floor>,
     ) -> Self {
-        Self {
-            seed,
-            impressions,
-            deals,
-            floor,
-        }
+        Self { seed, impressions, deals, floor }
     }
 
     pub(crate) const fn seed(self) -> Seed {

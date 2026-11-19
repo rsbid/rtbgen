@@ -51,9 +51,7 @@ pub(super) const fn request_id(seed: Seed) -> RequestId {
 
 /// Returns the resolved impression count of a profile.
 pub(super) fn impression_count(config: &Config, default: u8) -> u8 {
-    config
-        .impressions
-        .map_or(default, crate::impressions::ImpressionCount::count)
+    config.impressions.map_or(default, crate::impressions::ImpressionCount::count)
 }
 
 /// Returns the constant site profile the request was generated for.
@@ -92,10 +90,7 @@ pub(super) fn build_site(
     site.set_domain(Some(domain));
     site.set_cat(SITE_CAT);
     site.set_page(Some(page));
-    site.set_ref_page(
-        rng.bit(Share::percent(30))
-            .then_some("https://search.example/"),
-    );
+    site.set_ref_page(rng.bit(Share::percent(30)).then_some("https://search.example/"));
     site.set_mobile(Some(choose(rng, &[Flag::No, Flag::Yes], Flag::No)));
     site.set_privacypolicy(Some(Flag::Yes));
     site.set_publisher(Some(publisher));
@@ -183,10 +178,7 @@ pub(super) fn build_user(rng: &mut impl Entropy) -> Option<User> {
     let mut user = User::default();
     user.set_id(Some(UserId::new(u64::from(rng.below(1_000_000)))));
     user.set_buyeruid(Some(BuyerUserId::new(u64::from(rng.below(1_000_000)))));
-    user.set_consent(
-        rng.bit(Share::percent(60))
-            .then(|| choose(rng, CONSENTS, DEFAULT_CONSENT)),
-    );
+    user.set_consent(rng.bit(Share::percent(60)).then(|| choose(rng, CONSENTS, DEFAULT_CONSENT)));
     user.set_ext(rng.bit(Share::percent(30)).then_some(USER_EXT));
     Some(user)
 }
@@ -201,11 +193,7 @@ pub(super) fn build_regs(rng: &mut impl Entropy) -> Option<Regs> {
     regs.set_coppa(Some(Flag::No));
     regs.set_gdpr(Some(Flag::Yes));
     regs.set_gpp(rng.bit(Share::percent(40)).then_some(GPP));
-    regs.set_gpp_sid(if rng.bit(Share::percent(40)) {
-        GPP_SID
-    } else {
-        &[]
-    });
+    regs.set_gpp_sid(if rng.bit(Share::percent(40)) { GPP_SID } else { &[] });
     regs.set_ext(rng.bit(Share::percent(20)).then_some(REGS_EXT));
     Some(regs)
 }
@@ -216,37 +204,14 @@ fn build_banner(rng: &mut impl Entropy) -> Banner {
     let mut banner = Banner::default();
     banner.set_w(Some(width));
     banner.set_h(Some(height));
-    banner.set_btype(if rng.bit(Share::percent(40)) {
-        BANNER_BTYPE
-    } else {
-        &[]
-    });
-    banner.set_battr(if rng.bit(Share::percent(30)) {
-        BANNER_BATTR
-    } else {
-        &[]
-    });
-    banner.set_pos(Some(choose(
-        rng,
-        BANNER_POS,
-        PlacementPosition::ABOVE_THE_FOLD,
-    )));
+    banner.set_btype(if rng.bit(Share::percent(40)) { BANNER_BTYPE } else { &[] });
+    banner.set_battr(if rng.bit(Share::percent(30)) { BANNER_BATTR } else { &[] });
+    banner.set_pos(Some(choose(rng, BANNER_POS, PlacementPosition::ABOVE_THE_FOLD)));
     banner.set_mimes(BANNER_MIMES);
     banner.set_topframe(Some(choose(rng, BANNER_TOPTRAME, Flag::Yes)));
-    banner.set_expdir(if rng.bit(Share::percent(20)) {
-        BANNER_EXPDIR
-    } else {
-        &[]
-    });
-    banner.set_api(if rng.bit(Share::percent(50)) {
-        BANNER_API
-    } else {
-        &[]
-    });
-    banner.set_id(
-        rng.bit(Share::percent(50))
-            .then(|| BannerId::new(u64::from(rng.below(1_000)))),
-    );
+    banner.set_expdir(if rng.bit(Share::percent(20)) { BANNER_EXPDIR } else { &[] });
+    banner.set_api(if rng.bit(Share::percent(50)) { BANNER_API } else { &[] });
+    banner.set_id(rng.bit(Share::percent(50)).then(|| BannerId::new(u64::from(rng.below(1_000)))));
     banner
 }
 
@@ -268,22 +233,10 @@ fn build_video(rng: &mut impl Entropy) -> Video {
     video.set_skip(rng.bit(Share::percent(50)).then_some(Flag::Yes));
     video.set_skipmin(Some(5));
     video.set_skipafter(Some(5));
-    video.set_api(if rng.bit(Share::percent(50)) {
-        BANNER_API
-    } else {
-        &[]
-    });
-    video.set_battr(if rng.bit(Share::percent(30)) {
-        BANNER_BATTR
-    } else {
-        &[]
-    });
+    video.set_api(if rng.bit(Share::percent(50)) { BANNER_API } else { &[] });
+    video.set_battr(if rng.bit(Share::percent(30)) { BANNER_BATTR } else { &[] });
     video.set_delivery(VIDEO_DELIVERY);
-    video.set_pos(Some(choose(
-        rng,
-        BANNER_POS,
-        PlacementPosition::ABOVE_THE_FOLD,
-    )));
+    video.set_pos(Some(choose(rng, BANNER_POS, PlacementPosition::ABOVE_THE_FOLD)));
     if rng.bit(Share::percent(30)) {
         let mut companion = BannerList::default();
         companion.push(&build_banner(rng));
@@ -297,16 +250,8 @@ fn build_native(rng: &mut impl Entropy) -> Native {
     let mut native = Native::default();
     native.set_request(choose(rng, NATIVE_REQUESTS, DEFAULT_NATIVE_REQUEST));
     native.set_ver(choose(rng, NATIVE_VERSIONS, "1.2"));
-    native.set_api(if rng.bit(Share::percent(50)) {
-        BANNER_API
-    } else {
-        &[]
-    });
-    native.set_battr(if rng.bit(Share::percent(30)) {
-        BANNER_BATTR
-    } else {
-        &[]
-    });
+    native.set_api(if rng.bit(Share::percent(50)) { BANNER_API } else { &[] });
+    native.set_battr(if rng.bit(Share::percent(30)) { BANNER_BATTR } else { &[] });
     native.set_ext(rng.bit(Share::percent(20)).then_some(NATIVE_EXT));
     native
 }
@@ -321,9 +266,8 @@ fn build_imp(rng: &mut impl Entropy, media: Media, id: u32) -> Imp {
         Media::Native => imp.set_native(Some(build_native(rng))),
     }
 
-    let floor = rng
-        .bit(Share::percent(60))
-        .then(|| Money::from_scaled(choose(rng, FLOORS, 10_000)));
+    let floor =
+        rng.bit(Share::percent(60)).then(|| Money::from_scaled(choose(rng, FLOORS, 10_000)));
     imp.set_bidfloor(floor);
     imp.set_bidfloorcur(floor.map(|_| Currency::USD));
     imp.set_secure(rng.bit(Share::percent(85)).then_some(Flag::Yes));
@@ -362,50 +306,30 @@ fn build_at(rng: &mut impl Entropy) -> AuctionType {
 }
 
 fn build_tmax(rng: &mut impl Entropy) -> Option<u32> {
-    rng.bit(Share::percent(70))
-        .then(|| choose(rng, TMAX, 1_000))
+    rng.bit(Share::percent(70)).then(|| choose(rng, TMAX, 1_000))
 }
 
 fn build_cur(rng: &mut impl Entropy) -> &'static [Currency] {
-    if rng.bit(Share::percent(70)) {
-        CUR_USD
-    } else {
-        &[]
-    }
+    if rng.bit(Share::percent(70)) { CUR_USD } else { &[] }
 }
 
 fn build_bcat(rng: &mut impl Entropy) -> &'static [&'static str] {
-    if rng.bit(Share::percent(40)) {
-        BCAT
-    } else {
-        &[]
-    }
+    if rng.bit(Share::percent(40)) { BCAT } else { &[] }
 }
 
 fn build_badv(rng: &mut impl Entropy) -> &'static [&'static str] {
-    if rng.bit(Share::percent(20)) {
-        BADV
-    } else {
-        &[]
-    }
+    if rng.bit(Share::percent(20)) { BADV } else { &[] }
 }
 
 fn build_bapp(rng: &mut impl Entropy) -> &'static [&'static str] {
-    if rng.bit(Share::percent(20)) {
-        BAPP
-    } else {
-        &[]
-    }
+    if rng.bit(Share::percent(20)) { BAPP } else { &[] }
 }
 
 fn build_request_ext(rng: &mut impl Entropy) -> Option<RawJson> {
     rng.bit(Share::percent(30)).then_some(SITE_EXT)
 }
 
-type SiteChoice = (
-    (&'static str, &'static str, &'static str, &'static str),
-    &'static str,
-);
+type SiteChoice = ((&'static str, &'static str, &'static str, &'static str), &'static str);
 
 fn choose_site(rng: &mut impl Entropy) -> SiteChoice {
     (site_profile(rng), publisher_name(rng))
@@ -529,10 +453,8 @@ mod tests {
     fn an_imp_list_has_consecutive_ids() {
         let mut rng = Rng::from_seed(Seed::new(42));
         let imps = build_imp_list(&mut rng, Media::Banner, 3);
-        let ids: std::vec::Vec<u64> = imps
-            .iter()
-            .map(|imp| imp.id_for_tests().into_inner())
-            .collect();
+        let ids: std::vec::Vec<u64> =
+            imps.iter().map(|imp| imp.id_for_tests().into_inner()).collect();
 
         assert_eq!(ids, [1, 2, 3]);
     }

@@ -26,11 +26,7 @@ pub(crate) struct Pmp {
 impl Pmp {
     /// Builds a marketplace with a fixed auction flag and its deals.
     pub(crate) const fn new(private_auction: Flag, deals: &DealList) -> Self {
-        Self {
-            private_auction: Some(private_auction),
-            deals: *deals,
-            ext: None,
-        }
+        Self { private_auction: Some(private_auction), deals: *deals, ext: None }
     }
 
     pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
@@ -117,10 +113,7 @@ pub(crate) struct DealList {
 impl Default for DealList {
     fn default() -> Self {
         // The seed value is never written: `len` starts at zero.
-        Self {
-            items: [Deal::maximal(); MAX_DEALS],
-            len: 0,
-        }
+        Self { items: [Deal::maximal(); MAX_DEALS], len: 0 }
     }
 }
 
@@ -261,10 +254,7 @@ pub(crate) struct NodeList {
 
 impl Default for NodeList {
     fn default() -> Self {
-        Self {
-            items: [SupplyChainNode::maximal(); MAX_NODES],
-            len: 0,
-        }
+        Self { items: [SupplyChainNode::maximal(); MAX_NODES], len: 0 }
     }
 }
 

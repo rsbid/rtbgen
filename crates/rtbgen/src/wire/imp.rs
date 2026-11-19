@@ -116,15 +116,9 @@ pub(crate) struct ImpList {
 }
 
 impl Default for ImpList {
-    #[expect(
-        clippy::large_stack_arrays,
-        reason = "the wire model is allocation-free by design"
-    )]
+    #[expect(clippy::large_stack_arrays, reason = "the wire model is allocation-free by design")]
     fn default() -> Self {
-        Self {
-            items: [Imp::default(); MAX_IMPRESSIONS],
-            len: 0,
-        }
+        Self { items: [Imp::default(); MAX_IMPRESSIONS], len: 0 }
     }
 }
 
