@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The canonical snippet must be character-for-character identical in every
 # artifact that teaches the API. A divergence makes a model synthesise a third
-# form; see README.md and docs/02-llm-discoverability.md in the docs repo.
+# form instead of reusing the one it was given.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
