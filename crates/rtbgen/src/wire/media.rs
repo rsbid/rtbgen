@@ -2,7 +2,7 @@ use core::fmt;
 
 use super::MAX_COMPANIONS;
 use crate::code::{
-    ApiFramework, BlockedBannerType, CompanionType, CreativeAttribute, DeliveryMethod,
+    ApiFramework, BlockedBannerType, BlockedCreativeAttribute, CompanionType, DeliveryMethod,
     ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Protocol, VcmMode,
     VolumeNormalization,
 };
@@ -22,7 +22,7 @@ pub(crate) struct Banner {
     w: Option<u32>,
     h: Option<u32>,
     btype: &'static [BlockedBannerType],
-    battr: &'static [CreativeAttribute],
+    battr: &'static [BlockedCreativeAttribute],
     pos: Option<PlacementPosition>,
     mimes: &'static [&'static str],
     topframe: Option<Flag>,
@@ -37,7 +37,7 @@ setters!(Banner {
     set_w => w: Option<u32>,
     set_h => h: Option<u32>,
     set_btype => btype: &'static [BlockedBannerType],
-    set_battr => battr: &'static [CreativeAttribute],
+    set_battr => battr: &'static [BlockedCreativeAttribute],
     set_pos => pos: Option<PlacementPosition>,
     set_mimes => mimes: &'static [&'static str],
     set_topframe => topframe: Option<Flag>,
@@ -67,7 +67,7 @@ impl Banner {
             w: Some(300),
             h: Some(250),
             btype: &[BlockedBannerType::IFRAME],
-            battr: &[CreativeAttribute::AUDIO_AUTOPLAY],
+            battr: &[BlockedCreativeAttribute::AUDIO_AUTOPLAY],
             pos: Some(PlacementPosition::ABOVE_THE_FOLD),
             mimes: &["image/jpeg"],
             topframe: Some(Flag::Yes),
@@ -138,7 +138,7 @@ pub(crate) struct Video {
     skipmin: Option<u32>,
     skipafter: Option<u32>,
     api: &'static [ApiFramework],
-    battr: &'static [CreativeAttribute],
+    battr: &'static [BlockedCreativeAttribute],
     delivery: &'static [DeliveryMethod],
     pos: Option<PlacementPosition>,
     companionad: BannerList,
@@ -160,7 +160,7 @@ setters!(Video {
     set_skipmin => skipmin: Option<u32>,
     set_skipafter => skipafter: Option<u32>,
     set_api => api: &'static [ApiFramework],
-    set_battr => battr: &'static [CreativeAttribute],
+    set_battr => battr: &'static [BlockedCreativeAttribute],
     set_delivery => delivery: &'static [DeliveryMethod],
     set_pos => pos: Option<PlacementPosition>,
     set_companionad => companionad: BannerList,
@@ -208,7 +208,7 @@ impl Video {
             skipmin: Some(5),
             skipafter: Some(5),
             api: &[ApiFramework::MRAID_2],
-            battr: &[CreativeAttribute::AUDIO_AUTOPLAY],
+            battr: &[BlockedCreativeAttribute::AUDIO_AUTOPLAY],
             delivery: &[DeliveryMethod::PROGRESSIVE],
             pos: Some(PlacementPosition::ABOVE_THE_FOLD),
             companionad,
@@ -230,7 +230,7 @@ pub(crate) struct Audio {
     stitched: Option<Flag>,
     nvol: Option<VolumeNormalization>,
     api: &'static [ApiFramework],
-    battr: &'static [CreativeAttribute],
+    battr: &'static [BlockedCreativeAttribute],
     delivery: &'static [DeliveryMethod],
     ext: Option<RawJson>,
 }
@@ -262,7 +262,7 @@ impl Audio {
             stitched: Some(Flag::Yes),
             nvol: Some(VolumeNormalization::AVERAGE),
             api: &[ApiFramework::MRAID_2],
-            battr: &[CreativeAttribute::AUDIO_AUTOPLAY],
+            battr: &[BlockedCreativeAttribute::AUDIO_AUTOPLAY],
             delivery: &[DeliveryMethod::PROGRESSIVE],
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }
@@ -275,7 +275,7 @@ pub(crate) struct Native {
     request: &'static str,
     ver: &'static str,
     api: &'static [ApiFramework],
-    battr: &'static [CreativeAttribute],
+    battr: &'static [BlockedCreativeAttribute],
     ext: Option<RawJson>,
 }
 
@@ -283,7 +283,7 @@ setters!(Native {
     set_request => request: &'static str,
     set_ver => ver: &'static str,
     set_api => api: &'static [ApiFramework],
-    set_battr => battr: &'static [CreativeAttribute],
+    set_battr => battr: &'static [BlockedCreativeAttribute],
     set_ext => ext: Option<RawJson>,
 });
 
@@ -301,7 +301,7 @@ impl Native {
             request: r#"{"native":{"ver":"1.2"}}"#,
             ver: "1.2",
             api: &[ApiFramework::MRAID_2],
-            battr: &[CreativeAttribute::AUDIO_AUTOPLAY],
+            battr: &[BlockedCreativeAttribute::AUDIO_AUTOPLAY],
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }
     }

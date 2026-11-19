@@ -27,9 +27,9 @@ impl fmt::Display for BlockedBannerType {
 /// Values `1..=23` come from `AdCOM`'s creative-attributes list;
 /// vendor-specific codes are `500` and greater.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct CreativeAttribute(u16);
+pub(crate) struct BlockedCreativeAttribute(u16);
 
-impl CreativeAttribute {
+impl BlockedCreativeAttribute {
     /// A blocked audio ad that starts playing automatically.
     pub(crate) const AUDIO_AUTOPLAY: Self = Self(1);
 
@@ -37,7 +37,7 @@ impl CreativeAttribute {
     pub(crate) const AUDIO_USER_INITIATED: Self = Self(2);
 }
 
-impl fmt::Display for CreativeAttribute {
+impl fmt::Display for BlockedCreativeAttribute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }

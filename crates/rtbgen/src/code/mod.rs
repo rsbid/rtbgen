@@ -17,7 +17,7 @@ mod target;
 pub(crate) use auction::{AuctionType, DealAuctionType};
 pub(crate) use context::{FinalDecision, GppSectionId, SsaiMode};
 pub(crate) use media::{
-    ApiFramework, BlockedBannerType, CompanionType, CreativeAttribute, DeliveryMethod,
+    ApiFramework, BlockedBannerType, BlockedCreativeAttribute, CompanionType, DeliveryMethod,
     ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Protocol, VcmMode,
     VolumeNormalization,
 };

@@ -5,7 +5,7 @@ extern crate std;
 use std::string::ToString;
 
 use super::{
-    ApiFramework, AuctionType, BlockedBannerType, CompanionType, CreativeAttribute,
+    ApiFramework, AuctionType, BlockedBannerType, BlockedCreativeAttribute, CompanionType,
     DealAuctionType, DeliveryMethod, DeviceType, ExpandableDirection, FeedType, FinalDecision,
     GppSectionId, Linearity, LocationType, Placement, PlacementPosition, Protocol, SsaiMode,
     VcmMode, VolumeNormalization,
@@ -27,8 +27,8 @@ fn deal_auction_codes_are_the_three_openrtb_codes() {
 #[test]
 fn banner_codes_display_their_wire_value() {
     assert_eq!(BlockedBannerType::IFRAME.to_string(), "4");
-    assert_eq!(CreativeAttribute::AUDIO_AUTOPLAY.to_string(), "1");
-    assert_eq!(CreativeAttribute::AUDIO_USER_INITIATED.to_string(), "2");
+    assert_eq!(BlockedCreativeAttribute::AUDIO_AUTOPLAY.to_string(), "1");
+    assert_eq!(BlockedCreativeAttribute::AUDIO_USER_INITIATED.to_string(), "2");
     assert_eq!(ExpandableDirection::LEFT.to_string(), "1");
     assert_eq!(ExpandableDirection::UP.to_string(), "3");
     assert_eq!(ApiFramework::MRAID_1.to_string(), "3");

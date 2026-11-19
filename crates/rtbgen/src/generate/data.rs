@@ -5,7 +5,7 @@
 //! so a table edit is a release decision, not formatting.
 
 use crate::code::{
-    ApiFramework, AuctionType, BlockedBannerType, CompanionType, CreativeAttribute,
+    ApiFramework, AuctionType, BlockedBannerType, BlockedCreativeAttribute, CompanionType,
     DealAuctionType, DeliveryMethod, DeviceType, ExpandableDirection, GppSectionId, Placement,
     PlacementPosition, Protocol,
 };
@@ -117,8 +117,8 @@ pub(super) const GPP_SID: &[GppSectionId] = &[GppSectionId::TCF_EU_V2];
 
 pub(super) const BANNER_MIMES: &[&str] = &["image/jpeg", "image/png"];
 pub(super) const BANNER_BTYPE: &[BlockedBannerType] = &[BlockedBannerType::IFRAME];
-pub(super) const BANNER_BATTR: &[CreativeAttribute] =
-    &[CreativeAttribute::AUDIO_AUTOPLAY, CreativeAttribute::AUDIO_USER_INITIATED];
+pub(super) const BANNER_BATTR: &[BlockedCreativeAttribute] =
+    &[BlockedCreativeAttribute::AUDIO_AUTOPLAY, BlockedCreativeAttribute::AUDIO_USER_INITIATED];
 pub(super) const BANNER_EXPDIR: &[ExpandableDirection] =
     &[ExpandableDirection::LEFT, ExpandableDirection::UP];
 pub(super) const BANNER_API: &[ApiFramework] = &[ApiFramework::MRAID_1, ApiFramework::MRAID_2];
