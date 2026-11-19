@@ -2,22 +2,27 @@
 
 use core::fmt;
 
-/// The type of a banner creative: an element of `Banner.btype`.
+/// A blocked banner ad type: an element of `Banner.btype`.
+///
+/// `btype` is a blocklist: its values name the ad types the exchange refuses,
+/// not the type of the banner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct BannerType(u16);
+pub(crate) struct BlockedBannerType(u16);
 
-impl BannerType {
-    /// An `iframe` ad.
+impl BlockedBannerType {
+    /// The `iframe` banner ad type.
+    ///
+    /// Emitting it in `btype` blocks `iframe` banner ads.
     pub(crate) const IFRAME: Self = Self(4);
 }
 
-impl fmt::Display for BannerType {
+impl fmt::Display for BlockedBannerType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-/// A creative attribute: an element of `battr`.
+/// A blocked creative attribute: an element of `battr`.
 ///
 /// Values `1..=23` come from `AdCOM`'s creative-attributes list;
 /// vendor-specific codes are `500` and greater.
@@ -25,10 +30,10 @@ impl fmt::Display for BannerType {
 pub(crate) struct CreativeAttribute(u16);
 
 impl CreativeAttribute {
-    /// Audio ad that starts playing automatically.
+    /// A blocked audio ad that starts playing automatically.
     pub(crate) const AUDIO_AUTOPLAY: Self = Self(1);
 
-    /// Audio ad that starts only after a user action.
+    /// A blocked audio ad that starts only after a user action.
     pub(crate) const AUDIO_USER_INITIATED: Self = Self(2);
 }
 

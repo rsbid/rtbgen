@@ -2,7 +2,7 @@ use core::fmt;
 
 use super::MAX_COMPANIONS;
 use crate::code::{
-    ApiFramework, BannerType, CompanionType, CreativeAttribute, DeliveryMethod,
+    ApiFramework, BlockedBannerType, CompanionType, CreativeAttribute, DeliveryMethod,
     ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Protocol, VcmMode,
     VolumeNormalization,
 };
@@ -14,11 +14,14 @@ use crate::write::{
 };
 
 /// A banner impression or a video companion ad.
+///
+/// `btype` and `battr` are blocklists: they name the banner ad types and
+/// creative attributes the exchange refuses, not the ones it accepts.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Banner {
     w: Option<u32>,
     h: Option<u32>,
-    btype: &'static [BannerType],
+    btype: &'static [BlockedBannerType],
     battr: &'static [CreativeAttribute],
     pos: Option<PlacementPosition>,
     mimes: &'static [&'static str],
@@ -33,7 +36,7 @@ pub(crate) struct Banner {
 setters!(Banner {
     set_w => w: Option<u32>,
     set_h => h: Option<u32>,
-    set_btype => btype: &'static [BannerType],
+    set_btype => btype: &'static [BlockedBannerType],
     set_battr => battr: &'static [CreativeAttribute],
     set_pos => pos: Option<PlacementPosition>,
     set_mimes => mimes: &'static [&'static str],
@@ -63,7 +66,7 @@ impl Banner {
         Self {
             w: Some(300),
             h: Some(250),
-            btype: &[BannerType::IFRAME],
+            btype: &[BlockedBannerType::IFRAME],
             battr: &[CreativeAttribute::AUDIO_AUTOPLAY],
             pos: Some(PlacementPosition::ABOVE_THE_FOLD),
             mimes: &["image/jpeg"],
