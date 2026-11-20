@@ -2,7 +2,9 @@
 
 #![expect(clippy::expect_used, reason = "in tests a panic = a failed test")]
 
-use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed, SpecVersion};
+use rtbgen::{
+    BytesEntropy, Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed, SpecVersion,
+};
 use serde_json::Value;
 
 fn render(builder: rtbgen::RequestBuilder) -> Value {
@@ -138,7 +140,7 @@ fn the_canonical_configuration_builds() {
         .build();
 
     assert_eq!(request.profile(), Profile::AppRewarded);
-    assert_eq!(request.seed(), Seed::new(42));
+    assert_eq!(request.seed(), Some(Seed::new(42)));
     assert_eq!(request.spec(), SpecVersion::V26);
 
     let value: Value = serde_json::from_str(&request.to_json_string())
@@ -158,7 +160,27 @@ fn the_default_seed_is_zero_and_reproducible() {
     let first = Request::builder(Profile::SiteVideo).build();
     let second = Request::builder(Profile::SiteVideo).seed(Seed::new(0)).build();
 
-    assert_eq!(first.seed(), Seed::new(0));
+    assert_eq!(first.seed(), Some(Seed::new(0)));
+    assert_eq!(first.to_json_string(), second.to_json_string());
+}
+
+#[test]
+fn entropy_generation_is_deterministic_and_seedless() {
+    let bytes = [0x2A; 64];
+    let first = Request::from_entropy(
+        Profile::SiteDisplay,
+        SpecVersion::V26,
+        &mut BytesEntropy::new(&bytes),
+    );
+    let second = Request::from_entropy(
+        Profile::SiteDisplay,
+        SpecVersion::V26,
+        &mut BytesEntropy::new(&bytes),
+    );
+
+    assert_eq!(first.seed(), None, "an entropy request has no seed");
+    assert_eq!(first.profile(), Profile::SiteDisplay);
+    assert_eq!(first.spec(), SpecVersion::V26);
     assert_eq!(first.to_json_string(), second.to_json_string());
 }
 

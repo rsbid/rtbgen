@@ -3,9 +3,10 @@ members = ["crates/rtbgen", "crates/rtbgen-cli"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
-rust-version = "1.85"
+# proptest 1.12 requires 1.88.
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 description = "Deterministic OpenRTB 2.5/2.6 bid request generator for tests, fuzzing and load tests"
 keywords = ["openrtb", "advertising", "adtech", "testing", "fuzz"]

@@ -34,6 +34,17 @@ let json: String = req.to_json_string();
 - For a load test, use the CLI (`rtbgen --count 10000 --out ./requests/`), not a loop in the
   test: `--count` increments the seed for each request.
 
+## Fuzzing and property tests
+
+- Fuzzing: enable the `arbitrary` feature and use `Request::arbitrary(&mut Unstructured::new(bytes))`.
+  Every byte slice, including an empty one, produces a valid request.
+- Property tests: enable the `proptest` feature and use `rtbgen::proptest::request()`; it shrinks
+  on the seed and the typed knobs, not on raw bytes.
+- Serialization: enable the `serde` feature and use `serde_json::to_string(&request)`; it is
+  byte-identical to `request.to_json_string()`.
+- A request built from `arbitrary`, `from_entropy` or a custom source has no seed:
+  `request.seed()` returns `None`. Keep a `Seed` when you need exact reproduction.
+
 ## When not to use
 
 - Typed model for reading requests → `iab-specs-openrtb` / `openrtb`.

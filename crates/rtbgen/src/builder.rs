@@ -91,7 +91,7 @@ impl RequestBuilder {
             Config::new(RequestId::from_seed(self.seed), self.impressions, self.deals, self.floor);
         let model = generate::build(self.profile, self.seed, &config);
 
-        Request::from_model(self.profile, self.seed, self.spec, &model)
+        Request::from_model(self.profile, Some(self.seed), self.spec, &model)
     }
 }
 
@@ -109,7 +109,7 @@ mod tests {
     fn the_default_builder_is_seed_zero_and_2_6() {
         let request = RequestBuilder::new(Profile::SiteDisplay).build();
 
-        assert_eq!(request.seed(), Seed::new(0));
+        assert_eq!(request.seed(), Some(Seed::new(0)));
         assert_eq!(request.spec(), SpecVersion::V26);
         assert_eq!(request.profile(), Profile::SiteDisplay);
     }
@@ -125,7 +125,7 @@ mod tests {
 
         let request = builder.build();
 
-        assert_eq!(request.seed(), Seed::new(42));
+        assert_eq!(request.seed(), Some(Seed::new(42)));
         assert_eq!(request.spec(), SpecVersion::V25);
         assert_eq!(request.profile(), Profile::AppRewarded);
     }

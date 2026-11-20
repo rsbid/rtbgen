@@ -10,7 +10,7 @@ use crate::flag::Flag;
 use crate::ids::{AppId, BannerId, BuyerUserId, ImpId, PublisherId, SiteId, UserId};
 use crate::money::Money;
 use crate::raw::RawJson;
-use crate::rng::{Entropy, Share};
+use crate::rng::{Entropy, Share, Span};
 use crate::wire::{
     App, Banner, BannerList, Device, Geo, Imp, ImpList, Native, Publisher, Regs, RequestModel,
     Site, User, Video,
@@ -62,7 +62,7 @@ pub(super) fn publisher_name(rng: &mut impl Entropy) -> &'static str {
 
 fn build_publisher(rng: &mut impl Entropy, name: &'static str, domain: &'static str) -> Publisher {
     let mut publisher = Publisher::default();
-    publisher.set_id(Some(PublisherId::new(u64::from(rng.below(1_000)))));
+    publisher.set_id(Some(PublisherId::new(u64::from(rng.u32(Span::from_zero(999))))));
     publisher.set_name(Some(name));
     publisher.set_domain(Some(domain));
     publisher.set_cat(PUBLISHER_CAT);
@@ -79,7 +79,7 @@ pub(super) fn build_site(
     let publisher = build_publisher(rng, publisher_name, domain);
 
     let mut site = Site::default();
-    site.set_id(Some(SiteId::new(u64::from(rng.below(1_000)))));
+    site.set_id(Some(SiteId::new(u64::from(rng.u32(Span::from_zero(999))))));
     site.set_name(Some(site_name));
     site.set_domain(Some(domain));
     site.set_cat(SITE_CAT);
@@ -100,7 +100,7 @@ pub(super) fn build_app(rng: &mut impl Entropy) -> App {
     let publisher = build_publisher(rng, publisher_name, domain);
 
     let mut app = App::default();
-    app.set_id(Some(AppId::new(u64::from(rng.below(1_000)))));
+    app.set_id(Some(AppId::new(u64::from(rng.u32(Span::from_zero(999))))));
     app.set_name(Some(name));
     app.set_bundle(Some(bundle));
     app.set_storeurl(Some(storeurl));
@@ -170,8 +170,8 @@ pub(super) fn build_user(rng: &mut impl Entropy) -> Option<User> {
     }
 
     let mut user = User::default();
-    user.set_id(Some(UserId::new(u64::from(rng.below(1_000_000)))));
-    user.set_buyeruid(Some(BuyerUserId::new(u64::from(rng.below(1_000_000)))));
+    user.set_id(Some(UserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
+    user.set_buyeruid(Some(BuyerUserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
     user.set_consent(rng.bit(Share::percent(60)).then(|| choose(rng, CONSENTS, DEFAULT_CONSENT)));
     user.set_ext(rng.bit(Share::percent(30)).then_some(USER_EXT));
     Some(user)
@@ -205,7 +205,10 @@ fn build_banner(rng: &mut impl Entropy) -> Banner {
     banner.set_topframe(Some(choose(rng, BANNER_TOPTRAME, Flag::Yes)));
     banner.set_expdir(if rng.bit(Share::percent(20)) { BANNER_EXPDIR } else { &[] });
     banner.set_api(if rng.bit(Share::percent(50)) { BANNER_API } else { &[] });
-    banner.set_id(rng.bit(Share::percent(50)).then(|| BannerId::new(u64::from(rng.below(1_000)))));
+    banner.set_id(
+        rng.bit(Share::percent(50))
+            .then(|| BannerId::new(u64::from(rng.u32(Span::from_zero(999))))),
+    );
     banner
 }
 

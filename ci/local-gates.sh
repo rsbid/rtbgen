@@ -2,7 +2,7 @@
 # Every gate that CI runs, in the order CI runs them.
 #
 # Overrides:
-#   MSRV=1.85 ./ci/local-gates.sh    also checks the minimum supported Rust version
+#   MSRV=1.88 ./ci/local-gates.sh    also checks the minimum supported Rust version
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -22,6 +22,14 @@ cargo test --workspace --all-features --locked --no-fail-fast
 echo "== no_std"
 cargo build -p rtbgen --no-default-features --locked
 cargo test -p rtbgen --no-default-features --features alloc --locked
+
+echo "== feature matrix"
+cargo test -p rtbgen --no-default-features --features arbitrary --locked
+cargo test -p rtbgen --no-default-features --features proptest --locked
+cargo test -p rtbgen --no-default-features --features serde --locked
+cargo test -p rtbgen --test corpus --no-default-features --features arbitrary --locked
+cargo test -p rtbgen --test corpus --no-default-features --features proptest --locked
+cargo test -p rtbgen --test corpus --no-default-features --features serde --locked
 
 if [[ -n "${MSRV:-}" ]]; then
   echo "== msrv $MSRV"

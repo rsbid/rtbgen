@@ -44,6 +44,18 @@ golden corpus. Knobs widen a profile, they never conflict with it, so `build()` 
 - `Currency`, `Floor`, `ImpressionCount`, `Deals` — typed knobs.
 - `Profile::from_name(&str)` / `Profile::ALL` — profiles as data.
 - `rtbgen::corpus::ALL` — versioned corpus of generated fixtures.
+- `Request::from_entropy(profile, spec, &mut source)` — generate from any `Entropy` source;
+  `Request::seed()` returns `None` for such a request.
+- `RngEntropy`, `BytesEntropy`, `Share`, `Span` — the public entropy seam.
+
+## Adapters
+
+Optional features add APIs, never new bytes:
+
+- `arbitrary` — `Request: arbitrary::Arbitrary`; every byte slice becomes one valid request.
+- `proptest` — `rtbgen::proptest::request()` shrinks on the typed knobs, not raw bytes.
+- `serde` — `Request: serde::Serialize`; `serde_json::to_string(&request)` equals
+  `request.to_json_string()`.
 
 ## Profiles
 

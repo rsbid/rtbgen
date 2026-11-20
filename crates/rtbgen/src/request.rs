@@ -4,7 +4,10 @@ use core::fmt;
 use alloc::string::String;
 
 use crate::builder::RequestBuilder;
+use crate::generate::{self, Config};
+use crate::ids::RequestId;
 use crate::profile::Profile;
+use crate::rng::Entropy;
 use crate::seed::Seed;
 use crate::version::SpecVersion;
 use crate::wire::RequestModel;
@@ -12,11 +15,13 @@ use crate::wire::RequestModel;
 /// A generated `OpenRTB` bid request.
 ///
 /// Build it with [`Request::builder`]; the writer is pure, so the same model and
-/// spec version always produce the same bytes.
+/// spec version always produce the same bytes. With the `arbitrary` feature the
+/// type also implements `arbitrary::Arbitrary`; with `serde` it implements
+/// `serde::Serialize`.
 #[derive(Clone, Copy, Debug)]
 pub struct Request {
     profile: Profile,
-    seed: Seed,
+    seed: Option<Seed>,
     spec: SpecVersion,
     model: RequestModel,
 }
@@ -30,11 +35,29 @@ impl Request {
 
     pub(crate) const fn from_model(
         profile: Profile,
-        seed: Seed,
+        seed: Option<Seed>,
         spec: SpecVersion,
         model: &RequestModel,
     ) -> Self {
         Self { profile, seed, spec, model: *model }
+    }
+
+    /// Generates a request from an entropy source.
+    ///
+    /// The request id is drawn first, then the profile body, so the same
+    /// entropy sequence always produces byte-identical output. A request built
+    /// this way has no seed: [`Request::seed`] returns `None`.
+    ///
+    /// [`RngEntropy`](crate::RngEntropy) and [`BytesEntropy`](crate::BytesEntropy)
+    /// are the sources this crate ships; any deterministic implementation of
+    /// [`Entropy`](crate::Entropy) works.
+    #[must_use]
+    pub fn from_entropy(profile: Profile, spec: SpecVersion, entropy: &mut impl Entropy) -> Self {
+        let id = RequestId::from_entropy(entropy);
+        let config = Config::new(id, None, None, None);
+        let model = generate::build_with(profile, &config, entropy);
+
+        Self::from_model(profile, None, spec, &model)
     }
 
     /// Returns the profile the request was generated from.
@@ -43,9 +66,12 @@ impl Request {
         self.profile
     }
 
-    /// Returns the seed the request was generated from.
+    /// Returns the seed the request was built with.
+    ///
+    /// A request generated from an entropy source ([`Request::from_entropy`] or
+    /// the `arbitrary` adapter) has no seed, so this returns `None`.
     #[must_use]
-    pub const fn seed(&self) -> Seed {
+    pub const fn seed(&self) -> Option<Seed> {
         self.seed
     }
 

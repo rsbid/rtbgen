@@ -9,10 +9,8 @@
 
 use core::fmt;
 
+use crate::rng::{Entropy, Span};
 use crate::seed::Seed;
-
-#[cfg(test)]
-use crate::rng::Entropy;
 
 macro_rules! id_type {
     ($(#[$doc:meta])* $name:ident, $format:literal) => {
@@ -46,13 +44,13 @@ impl RequestId {
 
     /// Draws a request id from an entropy source.
     ///
-    /// The id is consumed before the profile distribution, so a byte slice maps
-    /// to exactly one request.
-    #[cfg(test)]
+    /// The id is consumed before the profile distribution, so an entropy
+    /// stream maps to exactly one request.
     #[must_use]
     pub(crate) fn from_entropy(entropy: &mut impl Entropy) -> Self {
-        let high = u64::from(entropy.below(u32::MAX));
-        let low = u64::from(entropy.below(u32::MAX));
+        let span = Span::from_zero(u32::MAX.saturating_sub(1));
+        let high = u64::from(entropy.u32(span));
+        let low = u64::from(entropy.u32(span));
         Self((high << 32) | low)
     }
 }

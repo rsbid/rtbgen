@@ -93,11 +93,11 @@ impl fmt::Display for Money {
         }
 
         // Trim trailing zeros, but keep at least one fractional digit.
-        let (divisor, digits) = if fraction % 1_000 == 0 {
+        let (divisor, digits) = if fraction.is_multiple_of(1_000) {
             (1_000_u64, 1_u8)
-        } else if fraction % 100 == 0 {
+        } else if fraction.is_multiple_of(100) {
             (100_u64, 2_u8)
-        } else if fraction % 10 == 0 {
+        } else if fraction.is_multiple_of(10) {
             (10_u64, 3_u8)
         } else {
             (1_u64, 4_u8)

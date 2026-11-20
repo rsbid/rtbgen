@@ -28,11 +28,27 @@
 //! | An exact bug reproduction | keep the [`Seed`] in the test, not the JSON |
 //! | Profiles as data | [`Profile::from_name`] and [`Profile::ALL`] |
 //! | Fixtures without the API | the `rtbgen` command-line interface |
+//! | Fuzzing where every byte matters | the `arbitrary` feature: `Request: arbitrary::Arbitrary` |
+//! | Property tests that shrink | the `proptest` feature: `rtbgen::proptest::request()` |
+//! | Serializing through `serde` | the `serde` feature: `serde_json::to_string(&request)` |
+//! | Your own deterministic source | [`Request::from_entropy`] and the [`Entropy`] trait |
 //!
 //! Both 2.x revisions share one wire model: [`SpecVersion::V25`] drops the
 //! fields the 2.6 revision added, and [`SpecVersion::V26`] is the default.
 //! `OpenRTB` 3.0 is a different object model and is planned for a future version
 //! of this project; it will not change 2.x output.
+//!
+//! ## Features
+//!
+//! | Feature | Adds | Default |
+//! |---|---|---|
+//! | `alloc` | `Request::to_json_string()` | yes |
+//! | `arbitrary` | `arbitrary::Arbitrary` for [`Request`] | no |
+//! | `proptest` | `rtbgen::proptest::request()` | no |
+//! | `serde` | `serde::Serialize` for [`Request`] | no |
+//!
+//! No feature changes the bytes of an existing `(spec, profile, seed, knobs)`
+//! tuple: the adapters only choose values, the writer is always the same.
 //!
 //! The core is `no_std` and has no unconditional runtime dependencies.
 
@@ -43,6 +59,8 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(feature = "arbitrary")]
+mod arbitrary_support;
 mod builder;
 #[expect(
     clippy::redundant_pub_crate,
@@ -75,18 +93,18 @@ mod impressions;
 )]
 mod money;
 mod profile;
+#[cfg(feature = "proptest")]
+pub mod proptest;
 #[expect(
     clippy::redundant_pub_crate,
     reason = "the module is crate-private; `pub` would trip `unreachable_pub`"
 )]
 mod raw;
 mod request;
-#[expect(
-    clippy::redundant_pub_crate,
-    reason = "the module is crate-private; `pub` would trip `unreachable_pub`"
-)]
 mod rng;
 mod seed;
+#[cfg(feature = "serde")]
+mod serde_support;
 mod version;
 #[expect(
     clippy::redundant_pub_crate,
@@ -106,5 +124,6 @@ pub use floor::Floor;
 pub use impressions::ImpressionCount;
 pub use profile::{Profile, UnknownProfile};
 pub use request::Request;
+pub use rng::{BytesEntropy, Entropy, RngEntropy, Share, Span};
 pub use seed::Seed;
 pub use version::{SpecVersion, UnknownSpecVersion};

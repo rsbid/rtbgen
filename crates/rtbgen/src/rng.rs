@@ -17,27 +17,126 @@ const fn splitmix64(state: &mut u64) -> u64 {
 
 /// A yes-rate in basis points, `0..=10_000`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Share(u16);
+pub struct Share(u16);
 
 impl Share {
-    pub(crate) const MAX: u16 = 10_000;
+    /// The largest rate: 100%.
+    pub const MAX: Self = Self(10_000);
+
+    /// The smallest rate: 0%.
+    pub const ZERO: Self = Self(0);
 
     /// Builds a rate from a whole percentage, saturating at 100%.
     #[must_use]
-    pub(crate) const fn percent(percent: u16) -> Self {
+    pub const fn percent(percent: u16) -> Self {
         let basis_points = percent.saturating_mul(100);
-        Self(if basis_points > Self::MAX { Self::MAX } else { basis_points })
+        Self(if basis_points > Self::MAX.0 { Self::MAX.0 } else { basis_points })
     }
 
+    /// Builds a rate from basis points, or `None` above 100%.
     #[must_use]
-    pub(crate) const fn basis_points(self) -> u16 {
+    pub const fn from_basis_points(basis_points: u16) -> Option<Self> {
+        if basis_points > Self::MAX.0 { None } else { Some(Self(basis_points)) }
+    }
+
+    /// Returns the rate in basis points.
+    #[must_use]
+    pub const fn basis_points(self) -> u16 {
         self.0
+    }
+}
+
+/// A non-empty inclusive range of `u32` values.
+///
+/// The range is validated at construction: `start > end` is rejected, so an
+/// empty or inverted range can never reach [`Entropy::u32`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Span {
+    start: u32,
+    end: u32,
+}
+
+impl Span {
+    /// Builds `start..=end`, or `None` when `start > end`.
+    #[must_use]
+    pub const fn new(start: u32, end: u32) -> Option<Self> {
+        if start > end { None } else { Some(Self { start, end }) }
+    }
+
+    /// Builds the range `0..=end`.
+    #[must_use]
+    pub const fn from_zero(end: u32) -> Self {
+        Self { start: 0, end }
+    }
+
+    /// Returns the first value.
+    #[must_use]
+    pub const fn start(self) -> u32 {
+        self.start
+    }
+
+    /// Returns the last value.
+    #[must_use]
+    pub const fn end(self) -> u32 {
+        self.end
+    }
+
+    /// Returns the number of values in the range.
+    ///
+    /// The full `u32` range has `2^32` values, which is why the count is a
+    /// `u64` rather than a `u32`.
+    #[must_use]
+    pub fn len(self) -> u64 {
+        let distance = u64::from(self.end).saturating_sub(u64::from(self.start));
+        distance.saturating_add(1)
+    }
+
+    /// Returns whether the range has no values.
+    ///
+    /// A [`Span`] is validated at construction, so this is always `false`; it
+    /// pairs with [`Span::len`] and documents the non-empty invariant.
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.start > self.end
+    }
+}
+
+/// The seam through which every profile draws its values.
+///
+/// Implementations must be deterministic: no clock, no environment and no OS
+/// entropy. The seeded builder and the statistical adapters all land in the
+/// same generation core, so a profile cannot drift between sources.
+pub trait Entropy {
+    /// Returns a value from `range`.
+    fn u32(&mut self, range: Span) -> u32;
+
+    /// Returns true with the given basis-point probability.
+    fn bit(&mut self, yes_rate: Share) -> bool {
+        let rate = yes_rate.basis_points();
+        if rate >= Share::MAX.basis_points() {
+            return true;
+        }
+        if rate == 0 {
+            return false;
+        }
+        let span = Span::from_zero(u32::from(Share::MAX.basis_points()).saturating_sub(1));
+        self.u32(span) < u32::from(rate)
+    }
+
+    /// Picks one item, or `None` for an empty slice.
+    fn pick<'items, T>(&mut self, items: &'items [T]) -> Option<&'items T> {
+        let upper = u32::try_from(items.len()).ok()?;
+        if upper == 0 {
+            return None;
+        }
+        let index = usize::try_from(self.u32(Span::from_zero(upper.saturating_sub(1)))).ok()?;
+        items.get(index)
     }
 }
 
 /// The deterministic source of every generated value.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct RngEntropy {
+pub struct RngEntropy {
     s0: u64,
     s1: u64,
     s2: u64,
@@ -47,7 +146,7 @@ pub(crate) struct RngEntropy {
 impl RngEntropy {
     /// Expands a seed into the xoshiro256** state.
     #[must_use]
-    pub(crate) const fn from_seed(seed: Seed) -> Self {
+    pub const fn from_seed(seed: Seed) -> Self {
         let mut state = seed.into_inner();
         let s0 = splitmix64(&mut state);
         let s1 = splitmix64(&mut state);
@@ -69,47 +168,24 @@ impl RngEntropy {
 
         result
     }
-}
 
-/// The seam through which every profile draws its values.
-///
-/// `arbitrary` and `proptest` adapters will call the same methods, so the
-/// generator has exactly one path.
-pub(crate) trait Entropy {
-    /// Returns a value in `0..upper`; zero means zero.
-    fn below(&mut self, upper: u32) -> u32;
-
-    /// Returns true with the given basis-point probability.
-    fn bit(&mut self, yes_rate: Share) -> bool {
-        if yes_rate.basis_points() >= Share::MAX {
-            return true;
-        }
-        if yes_rate.basis_points() == 0 {
-            return false;
-        }
-        self.below(u32::from(Share::MAX)) < u32::from(yes_rate.basis_points())
-    }
-
-    /// Picks one item, or `None` for an empty slice.
-    fn pick<'items, T>(&mut self, items: &'items [T]) -> Option<&'items T> {
-        let upper = u32::try_from(items.len()).ok()?;
-        if upper == 0 {
-            return None;
-        }
-        let index = usize::try_from(self.below(upper)).ok()?;
-        items.get(index)
-    }
-}
-
-impl Entropy for RngEntropy {
-    fn below(&mut self, upper: u32) -> u32 {
+    /// Returns a uniform value in `0..upper`; `upper` may be `2^32`.
+    fn below(&mut self, upper: u64) -> u64 {
         if upper == 0 {
             return 0;
         }
 
-        // Lemire's multiply-shift; u64 * u32 always fits u128.
+        // Lemire's multiply-shift; `u64 * u64` always fits `u128`.
         let product = u128::from(self.next_u64()).wrapping_mul(u128::from(upper));
-        u32::try_from(product >> 64).unwrap_or(0)
+        u64::try_from(product >> 64_u32).unwrap_or(u64::MAX)
+    }
+}
+
+impl Entropy for RngEntropy {
+    fn u32(&mut self, range: Span) -> u32 {
+        let offset = self.below(range.len());
+        let value = u64::from(range.start()).saturating_add(offset);
+        u32::try_from(value).unwrap_or(u32::MAX)
     }
 }
 
@@ -119,24 +195,22 @@ impl Entropy for RngEntropy {
 /// once the slice is exhausted every draw is zero. That keeps generation total:
 /// an `arbitrary` or property-test input may end in the middle of a request,
 /// and the contract is to produce a request anyway, never to panic.
-#[cfg(test)]
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct BytesEntropy<'bytes> {
+pub struct BytesEntropy<'bytes> {
     bytes: &'bytes [u8],
     cursor: usize,
 }
 
-#[cfg(test)]
 impl<'bytes> BytesEntropy<'bytes> {
     /// Wraps a byte slice as an entropy source.
     #[must_use]
-    pub(crate) const fn new(bytes: &'bytes [u8]) -> Self {
+    pub const fn new(bytes: &'bytes [u8]) -> Self {
         Self { bytes, cursor: 0 }
     }
 
     /// Returns the number of bytes no draw has consumed yet.
     #[must_use]
-    pub(crate) const fn remaining(&self) -> usize {
+    pub const fn remaining(&self) -> usize {
         self.bytes.len().saturating_sub(self.cursor)
     }
 
@@ -153,23 +227,29 @@ impl<'bytes> BytesEntropy<'bytes> {
 
         u64::from_le_bytes(word)
     }
-}
 
-#[cfg(test)]
-impl Entropy for BytesEntropy<'_> {
-    fn below(&mut self, upper: u32) -> u32 {
+    /// Returns a uniform value in `0..upper`; `upper` may be `2^32`.
+    fn below(&mut self, upper: u64) -> u64 {
         if upper == 0 {
             return 0;
         }
 
         let product = u128::from(self.next_u64()).wrapping_mul(u128::from(upper));
-        u32::try_from(product >> 64).unwrap_or(0)
+        u64::try_from(product >> 64_u32).unwrap_or(u64::MAX)
+    }
+}
+
+impl Entropy for BytesEntropy<'_> {
+    fn u32(&mut self, range: Span) -> u32 {
+        let offset = self.below(range.len());
+        let value = u64::from(range.start()).saturating_add(offset);
+        u32::try_from(value).unwrap_or(u32::MAX)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{BytesEntropy, Entropy, RngEntropy, Share, splitmix64};
+    use super::{BytesEntropy, Entropy, RngEntropy, Share, Span, splitmix64};
     use crate::seed::Seed;
 
     #[test]
@@ -222,17 +302,17 @@ mod tests {
     fn below_stays_in_range() {
         let mut rng = RngEntropy::from_seed(Seed::new(7));
         for _ in 0_u32..1_000 {
-            assert!(rng.below(10) < 10);
+            assert!(rng.u32(Span::from_zero(9)) < 10);
         }
-        assert_eq!(rng.below(0), 0);
+        assert_eq!(rng.u32(Span::from_zero(0)), 0);
     }
 
     #[test]
     fn rates_have_fixed_ends() {
         let mut rng = RngEntropy::from_seed(Seed::new(0));
         for _ in 0_u32..100 {
-            assert!(!rng.bit(Share::percent(0)));
-            assert!(rng.bit(Share::percent(100)));
+            assert!(!rng.bit(Share::ZERO));
+            assert!(rng.bit(Share::MAX));
         }
     }
 
@@ -248,7 +328,7 @@ mod tests {
     fn byte_entropy_pins_its_draws() {
         let mut entropy = BytesEntropy::new(&[0, 1, 2, 3, 4, 5, 6, 7]);
 
-        assert_eq!(entropy.below(u32::MAX), 0x0706_0503);
+        assert_eq!(entropy.u32(Span::from_zero(u32::MAX.saturating_sub(1))), 0x0706_0503);
         assert_eq!(entropy.remaining(), 0);
     }
 
@@ -257,9 +337,9 @@ mod tests {
         let mut entropy = BytesEntropy::new(&[0, 1, 2]);
         assert_eq!(entropy.remaining(), 3);
 
-        assert_eq!(entropy.below(u32::MAX), 0);
+        assert_eq!(entropy.u32(Span::from_zero(u32::MAX.saturating_sub(1))), 0);
         assert_eq!(entropy.remaining(), 0);
-        assert_eq!(entropy.below(u32::MAX), 0);
+        assert_eq!(entropy.u32(Span::from_zero(u32::MAX.saturating_sub(1))), 0);
     }
 
     #[test]
@@ -267,7 +347,7 @@ mod tests {
         let mut entropy = BytesEntropy::new(&[]);
 
         for _ in 0_u32..100 {
-            assert_eq!(entropy.below(10), 0);
+            assert_eq!(entropy.u32(Span::from_zero(9)), 0);
         }
         assert_eq!(entropy.remaining(), 0);
     }
@@ -276,11 +356,35 @@ mod tests {
     fn fixed_rates_and_empty_picks_do_not_consume_bytes() {
         let mut entropy = BytesEntropy::new(&[1, 2, 3, 4, 5, 6, 7, 8]);
 
-        assert!(!entropy.bit(Share::percent(0)));
-        assert!(entropy.bit(Share::percent(100)));
+        assert!(!entropy.bit(Share::ZERO));
+        assert!(entropy.bit(Share::MAX));
         assert!(entropy.pick::<u8>(&[]).is_none());
-        assert_eq!(entropy.below(0), 0);
         assert_eq!(entropy.remaining(), 8);
+    }
+
+    #[test]
+    fn a_one_value_span_still_consumes_one_draw() {
+        let mut entropy = BytesEntropy::new(&[1, 2, 3, 4, 5, 6, 7, 8]);
+
+        assert_eq!(entropy.u32(Span::from_zero(0)), 0);
+        assert_eq!(entropy.remaining(), 0);
+    }
+
+    #[test]
+    fn spans_are_validated() {
+        assert!(Span::new(5, 4).is_none());
+        assert_eq!(Span::new(4, 4).map(Span::len), Some(1));
+        assert_eq!(Span::from_zero(0).len(), 1);
+        assert_eq!(Span::from_zero(9).len(), 10);
+        assert_eq!(Span::new(0, u32::MAX).map(Span::len), Some(4_294_967_296));
+    }
+
+    #[test]
+    fn shares_are_basis_points() {
+        assert_eq!(Share::percent(5).basis_points(), 500);
+        assert_eq!(Share::percent(200).basis_points(), 10_000);
+        assert_eq!(Share::from_basis_points(10_000).map(Share::basis_points), Some(10_000));
+        assert!(Share::from_basis_points(10_001).is_none());
     }
 
     #[test]

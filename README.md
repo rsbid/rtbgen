@@ -36,6 +36,10 @@ golden corpus. Knobs widen a profile, they never conflict with it, so `build()` 
 | An exact bug reproduction | keep the `Seed` in the test, not the JSON |
 | Profiles as data | `Profile::from_name("app_rewarded")` and `Profile::ALL` |
 | Requests for a load test | `rtbgen --profile app_rewarded --seed 42 --count 10000 --out ./req/` |
+| Fuzzing where every byte matters | the `arbitrary` feature, then `Request::arbitrary(&mut Unstructured::new(bytes))` |
+| Property tests that shrink | the `proptest` feature, then `rtbgen::proptest::request()` |
+| Serializing through `serde` | the `serde` feature, then `serde_json::to_string(&request)` |
+| Your own deterministic source | `Request::from_entropy(profile, spec, &mut source)` |
 
 ## Profiles
 
@@ -66,6 +70,33 @@ The corpus lives in [`crates/rtbgen/corpus/v1`](https://github.com/rsbid/rtbgen/
 every entry and the JSON files are the bytes. Regenerate them with `rtbgen corpus --write`;
 never edit them by hand.
 
+## Fuzzing and property tests
+
+With the `arbitrary` feature, any byte slice becomes one request:
+
+```rust
+use arbitrary::{Arbitrary, Unstructured};
+
+let mut input = Unstructured::new(bytes);
+let request = rtbgen::Request::arbitrary(&mut input)?;
+```
+
+With the `proptest` feature, the strategy shrinks on the typed knobs:
+
+```rust
+proptest! {
+    #[test]
+    fn every_request_is_valid(request in rtbgen::proptest::request()) {
+        let json = request.to_json_string();
+        // parse and assert
+    }
+}
+```
+
+With the `serde` feature, `serde_json::to_string(&request)` is byte-identical to
+`request.to_json_string()`. For your own deterministic source, implement `rtbgen::Entropy` and
+call `rtbgen::Request::from_entropy(profile, spec, &mut source)`; such a request has no seed.
+
 ## Add to your AGENTS.md
 
 If an agent writes tests in your repository, put this in its context:
@@ -81,11 +112,23 @@ The output is byte-stable; do not sort keys or post-process it.
 
 ```toml
 [dev-dependencies]
-rtbgen = "0.1"
+rtbgen = "0.2"
 ```
 
 `to_json_string` needs the default `alloc` feature. `default-features = false` gives a `no_std`
 writer: `write_json(&mut impl fmt::Write)`. The core has no unconditional runtime dependencies.
+
+Optional features add adapters, never new bytes:
+
+```toml
+rtbgen = { version = "0.2", features = ["arbitrary", "proptest", "serde"] }
+```
+
+| Feature | Adds |
+|---|---|
+| `arbitrary` | `arbitrary::Arbitrary for Request`: every byte slice becomes one valid request |
+| `proptest` | `rtbgen::proptest::request()`: a strategy that shrinks on the typed knobs |
+| `serde` | `serde::Serialize for Request`: `serde_json::to_string` equals `to_json_string` |
 
 ## Command line
 
@@ -101,10 +144,10 @@ rtbgen corpus --verify
 
 ## Roadmap
 
-The 0.1 release is the valid-request core. Planned next: the `Entropy` seam with `arbitrary` and
-`proptest` adapters and the `serde` feature, then the `degrade` knob that emits one deliberate
-OpenRTB violation per request. The canonical snippet and the bytes of existing profiles will not
-change when those land.
+The 0.2 release adds the public `Entropy` seam with the `arbitrary`, `proptest` and `serde`
+adapters; none of them changes the bytes of an existing profile. Planned next: the `degrade`
+knob that emits one deliberate OpenRTB violation per request. The canonical snippet and the
+bytes of existing profiles will not change when it lands.
 
 ## License
 

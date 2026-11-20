@@ -19,4 +19,4 @@ doc = false
 workspace = true
 
 [dependencies]
-rtbgen = { path = "../rtbgen", version = "0.1.0" }
+rtbgen = { path = "../rtbgen", version = "0.2.0" }
