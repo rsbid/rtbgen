@@ -33,6 +33,7 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 | Several impressions | `.impressions_exact(ImpressionCount::new(2))`: an exact count in 1..=3, over a profile's default |
 | A private marketplace | `.deals(Deals::new(3))`, on any profile |
 | A bid floor | `.floor(Floor::cpm(1.50, Currency::USD))` |
+| A request that violates the spec | `.degrade(DegradeRate::percent(5))` |
 | An exact bug reproduction | keep the `Seed` in the test, not the JSON |
 | Profiles as data | `Profile::from_name("app_rewarded")` and `Profile::ALL` |
 | Requests for a load test | `rtbgen --profile app_rewarded --seed 42 --count 10000 --out ./req/` |
@@ -58,21 +59,82 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 `Maximal` alternates `site` and `app` with the seed: OpenRTB forbids both at once, so the seed
 chooses which supply source the request keeps. Every other field appears in either variant.
 
+## Malformed requests
+
+Parsers fail on real traffic, not only on valid fixtures. `.degrade(DegradeRate::percent(5))`
+gives about one request in twenty **exactly one** deliberate OpenRTB violation; the other
+requests keep the profile's bytes. `percent(0)` is byte-identical to not calling the knob, and
+`percent(100)` always mutates. The mutation is drawn from the seed, so a seed and a rate
+reproduce the same defect, and the document is always valid JSON.
+
+| Mutation | What it breaks |
+|---|---|
+| `at` 0, 5 or 499 | auction-type code bounds |
+| `bidfloor` as `"1.50"` | money typing |
+| `bidfloorcur` `"RUR"`, `"usd"` or `""` | currency validation |
+| `device.ip` as IPv6 | address family |
+| `id` empty, blank or non-ASCII | empty vs blank id, byte length in parsers |
+| `site` and `app` together | mutually exclusive supply sources |
+| 4..=10 and 10 000 impressions | impression cap and oversized body |
+| duplicate `imp[].id` | impression-id uniqueness |
+| `tmax` 120000, 0 or absent | deadline cap and "zero = no deadline" |
+| `user` without `consent`, or `consent` with a dot | presence rules and TCF |
+| negative or missing `banner.w`/`banner.h` | banner size |
+| deeply nested `ext` | raw-JSON handling |
+| `cur` as `"USD"` or `["US1"]` | list typing and currency validation |
+
+`Mutation::ALL` is the closed set, and `request.mutation()` returns the one defect a request
+carries. A mutation never breaks JSON: it breaks OpenRTB.
+
+## Parser check
+
+The mutation table was measured, not guessed. On 2026-11-20, `rtbgen` 0.3.0 generated 180
+requests (nine profiles, both revisions, ten seeds each) and one sample per mutation. Each
+implementation below parsed every request; a mutation counts as detected only when the same
+profile, revision and seed was **accepted** before the mutation and **rejected** after it.
+
+| Implementation | Version | Valid requests accepted | Defects detected |
+|---|---|---|---|
+| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 160/180 | 7/25 |
+| [`openrtb26`](https://crates.io/crates/openrtb26) | 0.1.1 | 180/180 | 2/25 |
+| [`iab-specs-openrtb`](https://crates.io/crates/iab-specs-openrtb) | 0.5.1 | 132/180 | 2/25 |
+| [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 3/11 |
+
+Read the table as a map of the layer each tool checks:
+
+- `rtblint-core` is the only one that rejects `at: 0/5/499`, `bidfloor` as a string, both
+  `site` and `app`, `tmax: 0` and `cur` as a string. It still accepts `"usd"`/`""` in
+  `bidfloorcur`, IPv6 in `device.ip`, duplicate impression ids and 10 000 impressions.
+- The serde parsers catch a wrong JSON type (`"1.50"` as money, `"USD"` instead of `["USD"]`)
+  and almost nothing semantic. `openrtb26` accepts every request; `iab-specs-openrtb` adds two
+  type checks.
+- The 20 `rtblint-core` misses are all `Sparse`: the profile deliberately omits `site`/`app`,
+  so a strict validator rejects it while a serde parser accepts it.
+- `openrtb` 0.2.1 rejects 170 of the 180 valid requests because its `User.data` has no serde
+  default; its detection column covers the 11 mutations whose baseline it could parse.
+  `iab-specs-openrtb` 0.5.1 reads nested `ext` and `pmp` as `Vec<u8>`, so map-valued extensions
+  fail there regardless of validity.
+
+This matrix is why 0.3.0 emits `device.ifa` (not `idfa`), a native request at the root, and
+`skipmin`/`skipafter`/`gpp_sid` only with their parent field.
+
 ## Determinism
 
-Same seed + same config + same `rtbgen` version ⇒ byte-identical output. The PRNG is `rtbgen`'s
-own (not `rand`, whose algorithm is not guaranteed stable across versions), key order is fixed,
-and `corpus/v1/` is checked in and verified by the test suite.
+Same seed + same config + same `rtbgen` version ⇒ byte-identical output, including the mutation
+a degraded request carries. The PRNG is `rtbgen`'s own (not `rand`, whose algorithm is not
+guaranteed stable across versions), key order is fixed, and `corpus/v2/` is checked in and
+verified by the test suite. `corpus/v1/` remains as the previous byte contract.
 
 **Changing the bytes of existing output is a semver-major change.**
 
-The corpus lives in [`crates/rtbgen/corpus/v1`](https://github.com/rsbid/rtbgen/tree/main/crates/rtbgen/corpus/v1): `manifest.toml` names
+The corpus lives in [`crates/rtbgen/corpus/v2`](https://github.com/rsbid/rtbgen/tree/main/crates/rtbgen/corpus/v2): `manifest.toml` names
 every entry and the JSON files are the bytes. Regenerate them with `rtbgen corpus --write`;
 never edit them by hand.
 
 ## Fuzzing and property tests
 
-With the `arbitrary` feature, any byte slice becomes one request:
+With the `arbitrary` feature, any byte slice becomes one request. The adapter also draws a
+degrade rate, so a fuzz target covers malformed input as well as valid requests:
 
 ```rust
 use arbitrary::{Arbitrary, Unstructured};
@@ -114,7 +176,7 @@ The output is byte-stable; do not sort keys or post-process it.
 
 ```toml
 [dev-dependencies]
-rtbgen = "0.2"
+rtbgen = "0.3"
 ```
 
 `to_json_string` needs the default `alloc` feature. `default-features = false` gives a `no_std`
@@ -123,7 +185,7 @@ writer: `write_json(&mut impl fmt::Write)`. The core has no unconditional runtim
 Optional features add adapters, never new bytes:
 
 ```toml
-rtbgen = { version = "0.2", features = ["arbitrary", "proptest", "serde"] }
+rtbgen = { version = "0.3", features = ["arbitrary", "proptest", "serde"] }
 ```
 
 | Feature | Adds |
@@ -137,6 +199,7 @@ rtbgen = { version = "0.2", features = ["arbitrary", "proptest", "serde"] }
 ```text
 rtbgen --profile app_rewarded --seed 42 --count 10000 --out ./requests/
 rtbgen --profile pmp_deals --spec 2.5 --seed 42
+rtbgen --profile site_display --seed 42 --count 100 --degrade 5% --out ./malformed/
 rtbgen --list-profiles
 rtbgen corpus --verify
 ```
@@ -146,10 +209,12 @@ rtbgen corpus --verify
 
 ## Roadmap
 
-The 0.2 release adds the public `Entropy` seam with the `arbitrary`, `proptest` and `serde`
-adapters; none of them changes the bytes of an existing profile. Planned next: the `degrade`
-knob that emits one deliberate OpenRTB violation per request. The canonical snippet and the
-bytes of existing profiles will not change when it lands.
+The 0.3 release adds the `degrade` knob and its mutation table, and fixes four fields the parser
+matrix caught: `device.ifa` (not the non-spec `idfa`), the Native Markup Request root, `skipmin`/
+`skipafter` only with `skip`, and `gpp_sid` only with `gpp`. Existing snapshots must be
+regenerated; `corpus/v2` is the new byte contract and `corpus/v1` is kept as history. The
+`arbitrary` adapter now draws a degrade rate, which changes its byte mapping too. After a period
+without behaviour changes, 1.0 freezes the API and the bytes.
 
 ## License
 

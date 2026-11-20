@@ -9,6 +9,8 @@
 - Generating request corpora for load tests (`oha`, `drill`).
 - Reproducing a bug: a seed plus a profile is the whole fixture.
 - Checking that a parser treats optional objects as optional (`Sparse`).
+- Checking that a parser rejects a realistic request with exactly one spec violation
+  (`.degrade(DegradeRate::percent(5))`).
 
 ## When not to use
 
@@ -37,7 +39,9 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 ## API map
 
 - `Request::builder(Profile)` — start here; `.seed()`, `.spec()`, `.impressions_exact()`,
-  `.deals()`, `.floor()`, `.build()`.
+  `.deals()`, `.floor()`, `.degrade()`, `.build()`.
+- `DegradeRate` / `Mutation` — one deliberate OpenRTB violation per request; see below.
+- `Request::mutation()` — the violation the request carries, if any.
 - `Request::write_json(&mut impl fmt::Write)` — no allocation, `no_std`.
 - `Request::to_json_string()` — `String` (feature `alloc`, on by default).
 - `SpecVersion` — `.spec(SpecVersion::V25)`; 2.6 is the default.
@@ -46,13 +50,15 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 - `rtbgen::corpus::ALL` — versioned corpus of generated fixtures.
 - `Request::from_entropy(profile, spec, &mut source)` — generate from any `Entropy` source;
   `Request::seed()` returns `None` for such a request.
+- `Request::from_entropy_with(profile, spec, rate, &mut source)` — the same, with a degrade rate.
 - `RngEntropy`, `BytesEntropy`, `Share`, `Span` — the public entropy seam.
 
 ## Adapters
 
 Optional features add APIs, never new bytes:
 
-- `arbitrary` — `Request: arbitrary::Arbitrary`; every byte slice becomes one valid request.
+- `arbitrary` — `Request: arbitrary::Arbitrary`; every byte slice becomes one request, and the
+  adapter draws a degrade rate, so some inputs are deliberately malformed.
 - `proptest` — `rtbgen::proptest::request()` shrinks on the typed knobs, not raw bytes.
 - `serde` — `Request: serde::Serialize` for `serde_json`: `serde_json::to_string(&request)`
   equals `request.to_json_string()`. Other serializers see the raw-value marker, not the object.
@@ -65,9 +71,20 @@ Optional features add APIs, never new bytes:
 
 `Maximal` alternates `site` and `app` with the seed; OpenRTB forbids both at once.
 
+## Malformed requests
+
+`.degrade(DegradeRate::percent(5))` mutates about one request in twenty; `percent(0)` is
+byte-identical to no knob and `percent(100)` always mutates. Exactly one defect per request,
+drawn from the seed; the output is valid JSON but invalid OpenRTB. The closed set (`Mutation::ALL`)
+covers `at` bounds, `bidfloor` as a string, bad `bidfloorcur`, IPv6 `device.ip`, empty/blank/
+non-ASCII `id`, `site`+`app`, over-cap and huge `imp` lists, duplicate `imp[].id`, `tmax`
+120000/0/absent, missing or dotted `consent`, negative or missing banner size, deep `ext`, and
+`cur` of the wrong type or code.
+
 ## Command line
 
 `rtbgen --profile app_rewarded --seed 42 --count 10000 --out ./requests/`,
+`rtbgen --profile site_display --seed 42 --count 100 --degrade 5% --out ./malformed/`,
 `rtbgen --list-profiles`, `rtbgen corpus --verify`.
 
 ## Docs
@@ -75,4 +92,6 @@ Optional features add APIs, never new bytes:
 - Repository: https://github.com/rsbid/rtbgen
 - API docs: https://docs.rs/rtbgen
 - Changelog: https://github.com/rsbid/rtbgen/blob/main/CHANGELOG.md
-- Golden corpus: crates/rtbgen/corpus/v1/
+- Golden corpus: crates/rtbgen/corpus/v2/ (`v1` is the previous byte contract)
+- Parser check: README.md, section "Parser check" (measured with `rtblint-core`, `openrtb`,
+  `openrtb26` and `iab-specs-openrtb`)

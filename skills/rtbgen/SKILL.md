@@ -31,6 +31,10 @@ let json: String = req.to_json_string();
 - Target OpenRTB 2.5 with `.spec(SpecVersion::V25)`; 2.6 is the default, so do not set it.
 - Add `use rtbgen::Profile::*;` only inside a test module; the variants are unprefixed
   and collide with domain types otherwise.
+- For a parser's failure path, add `.degrade(DegradeRate::percent(5))`: one deliberate
+  OpenRTB violation per mutated request, still valid JSON. `percent(0)` is off and
+  `percent(100)` always mutates; `request.mutation()` names the defect.
+- Do not use `degrade` for a valid fixture: the default output is already valid.
 - The output is byte-stable: do not sort keys, do not post-process it.
 - For a load test, use the CLI (`rtbgen --count 10000 --out ./requests/`), not a loop in the
   test: `--count` increments the seed for each request.
@@ -38,7 +42,8 @@ let json: String = req.to_json_string();
 ## Fuzzing and property tests
 
 - Fuzzing: enable the `arbitrary` feature and use `Request::arbitrary(&mut Unstructured::new(bytes))`.
-  Every byte slice, including an empty one, produces a valid request.
+  Every byte slice, including an empty one, produces a request; the adapter draws a degrade
+  rate, so some inputs carry one deliberate violation.
 - Property tests: enable the `proptest` feature and use `rtbgen::proptest::request()`; it shrinks
   on the seed and the typed knobs, not on raw bytes.
 - Serialization: enable the `serde` feature and use `serde_json::to_string(&request)`; it is
@@ -51,5 +56,4 @@ let json: String = req.to_json_string();
 
 - Typed model for reading requests → `iab-specs-openrtb` / `openrtb`.
 - Spec validation → `rtblint`.
-- Deliberately malformed requests → the `degrade` knob lands after 0.1; until then, do not
-  hand-write broken JSON with this crate.
+- Hand-written broken JSON → use `.degrade(DegradeRate::percent(...))` instead.
