@@ -22,15 +22,21 @@ unchanged, and every existing `(spec, profile, seed, knobs)` tuple keeps its out
   knobs, feeds every remaining byte to `BytesEntropy`, and never panics on an empty or
   truncated input.
 - The `proptest` feature: `rtbgen::proptest::request()`, a strategy that varies the profile,
-  seed, revision, impressions, deals and floor and shrinks on those typed knobs.
-- The `serde` feature: `serde::Serialize for Request`. Serialization reuses the writer's own
-  JSON, so `serde_json::to_string(&request)` is byte-identical to
-  `request.to_json_string()`.
+  seed, revision and typed knobs and shrinks on them. The impression count, the deal count and
+  the floor are optional, so the strategy also produces requests without a `pmp`.
+- The `serde` feature: `serde::Serialize for Request`, targeting `serde_json`. Serialization
+  reuses the writer's own JSON, so `serde_json::to_string(&request)` is byte-identical to
+  `request.to_json_string()`; another serializer sees the raw-value marker, not the object.
+- Byte goldens for the entropy adapters: `Request::from_entropy` and `arbitrary` output is
+  pinned by a test, so a change to a byte source or to the draw order is a visible diff.
 
 ### Changed
 
 - `Request::seed()` now returns `Option<Seed>`. It is `Some` for a request built from a
   seed and `None` for one generated from an entropy source (`from_entropy`, `arbitrary`).
+- `RequestBuilder::impressions` is now `RequestBuilder::impressions_exact`. The method
+  overrides a profile's default count (`MultiImp` picks `2..=3` by itself) instead of
+  suggesting one; the name now says so.
 - The minimum supported Rust version is 1.88, required by `proptest` 1.12.
 
 ### Notes

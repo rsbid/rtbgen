@@ -9,7 +9,7 @@ use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed};
 fn main() -> ExitCode {
     let req = Request::builder(Profile::AppRewarded)
         .seed(Seed::new(42))
-        .impressions(ImpressionCount::new(2))
+        .impressions_exact(ImpressionCount::new(2))
         .deals(Deals::new(3))
         .floor(Floor::cpm(1.50, Currency::USD))
         .build();

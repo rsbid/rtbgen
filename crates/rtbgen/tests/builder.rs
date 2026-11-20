@@ -23,18 +23,20 @@ fn impressions(value: &Value) -> usize {
 
 #[test]
 fn the_impressions_knob_works_on_every_profile() {
+    // The knob is an explicit override: even `MultiImp`, whose default is
+    // 2..=3, carries exactly the requested count.
     for profile in Profile::ALL {
         for count in 1_u8..=3 {
             let value = render(
                 Request::builder(profile)
                     .seed(Seed::new(5))
-                    .impressions(ImpressionCount::new(count)),
+                    .impressions_exact(ImpressionCount::new(count)),
             );
 
             assert_eq!(
                 impressions(&value),
                 usize::from(count),
-                "{profile} ignored impressions({count})"
+                "{profile} ignored impressions_exact({count})"
             );
         }
     }
@@ -44,10 +46,12 @@ fn the_impressions_knob_works_on_every_profile() {
 fn the_impressions_knob_clamps() {
     for profile in [Profile::SiteDisplay, Profile::MultiImp, Profile::Sparse] {
         let low = render(
-            Request::builder(profile).seed(Seed::new(1)).impressions(ImpressionCount::new(0)),
+            Request::builder(profile).seed(Seed::new(1)).impressions_exact(ImpressionCount::new(0)),
         );
         let high = render(
-            Request::builder(profile).seed(Seed::new(1)).impressions(ImpressionCount::new(u8::MAX)),
+            Request::builder(profile)
+                .seed(Seed::new(1))
+                .impressions_exact(ImpressionCount::new(u8::MAX)),
         );
 
         assert_eq!(impressions(&low), 1);
@@ -134,7 +138,7 @@ fn the_spec_knob_keeps_the_profile_shape() {
 fn the_canonical_configuration_builds() {
     let request = Request::builder(Profile::AppRewarded)
         .seed(Seed::new(42))
-        .impressions(ImpressionCount::new(2))
+        .impressions_exact(ImpressionCount::new(2))
         .deals(Deals::new(3))
         .floor(Floor::cpm(1.50, Currency::USD))
         .build();

@@ -46,6 +46,20 @@ impl Config {
         Self { id, impressions, deals, floor }
     }
 
+    /// Draws the request id, then builds the configuration.
+    ///
+    /// The id is consumed before the profile distribution, so an entropy
+    /// stream maps to exactly one request. Every entropy entry point goes
+    /// through this helper, so the order cannot drift between them.
+    pub(crate) fn from_entropy(
+        entropy: &mut impl Entropy,
+        impressions: Option<ImpressionCount>,
+        deals: Option<Deals>,
+        floor: Option<Floor>,
+    ) -> Self {
+        Self::new(RequestId::from_entropy(entropy), impressions, deals, floor)
+    }
+
     pub(crate) const fn id(self) -> RequestId {
         self.id
     }
@@ -126,8 +140,7 @@ mod tests {
 
     fn from_bytes(profile: Profile, bytes: &[u8]) -> String {
         let mut entropy = BytesEntropy::new(bytes);
-        let id = RequestId::from_entropy(&mut entropy);
-        let config = Config::new(id, None, None, None);
+        let config = Config::from_entropy(&mut entropy, None, None, None);
 
         json(&build_with(profile, &config, &mut entropy))
     }

@@ -9,7 +9,7 @@
 //!
 //! let req = Request::builder(Profile::AppRewarded)
 //!     .seed(Seed::new(42))
-//!     .impressions(ImpressionCount::new(2))
+//!     .impressions_exact(ImpressionCount::new(2))
 //!     .deals(Deals::new(3))
 //!     .floor(Floor::cpm(1.50, Currency::USD))
 //!     .build();
@@ -45,10 +45,13 @@
 //! | `alloc` | `Request::to_json_string()` | yes |
 //! | `arbitrary` | `arbitrary::Arbitrary` for [`Request`] | no |
 //! | `proptest` | `rtbgen::proptest::request()` | no |
-//! | `serde` | `serde::Serialize` for [`Request`] | no |
+//! | `serde` | `serde::Serialize` for [`Request`] (for `serde_json`) | no |
 //!
 //! No feature changes the bytes of an existing `(spec, profile, seed, knobs)`
 //! tuple: the adapters only choose values, the writer is always the same.
+//! The `serde` adapter embeds the writer's JSON as a raw value, so it is
+//! meaningful only with `serde_json`; another serializer sees the raw-value
+//! marker instead of the request object.
 //!
 //! The core is `no_std` and has no unconditional runtime dependencies.
 

@@ -23,7 +23,7 @@ use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed};
 
 let req = Request::builder(Profile::AppRewarded)
     .seed(Seed::new(42))
-    .impressions(ImpressionCount::new(2))
+    .impressions_exact(ImpressionCount::new(2))
     .deals(Deals::new(3))
     .floor(Floor::cpm(1.50, Currency::USD))
     .build();
@@ -32,11 +32,11 @@ let json: String = req.to_json_string();
 ```
 
 Same seed and config produce byte-identical output; the output is covered by a versioned
-golden corpus. Knobs widen a profile, they never conflict with it, so `build()` cannot fail.
+golden corpus. Every knob is a typed value, so `build()` cannot fail.
 
 ## API map
 
-- `Request::builder(Profile)` — start here; `.seed()`, `.spec()`, `.impressions()`,
+- `Request::builder(Profile)` — start here; `.seed()`, `.spec()`, `.impressions_exact()`,
   `.deals()`, `.floor()`, `.build()`.
 - `Request::write_json(&mut impl fmt::Write)` — no allocation, `no_std`.
 - `Request::to_json_string()` — `String` (feature `alloc`, on by default).
@@ -54,13 +54,14 @@ Optional features add APIs, never new bytes:
 
 - `arbitrary` — `Request: arbitrary::Arbitrary`; every byte slice becomes one valid request.
 - `proptest` — `rtbgen::proptest::request()` shrinks on the typed knobs, not raw bytes.
-- `serde` — `Request: serde::Serialize`; `serde_json::to_string(&request)` equals
-  `request.to_json_string()`.
+- `serde` — `Request: serde::Serialize` for `serde_json`: `serde_json::to_string(&request)`
+  equals `request.to_json_string()`. Other serializers see the raw-value marker, not the object.
 
 ## Profiles
 
 `SiteDisplay`, `SiteVideo`, `SiteNative`, `AppRewarded`, `AppBanner`, `PmpDeals`,
-`MultiImp`, `Sparse`, `Maximal`.
+`MultiImp` (2..=3 impressions by default; `.impressions_exact()` overrides the count),
+`Sparse`, `Maximal`.
 
 `Maximal` alternates `site` and `app` with the seed; OpenRTB forbids both at once.
 

@@ -5,7 +5,6 @@ use alloc::string::String;
 
 use crate::builder::RequestBuilder;
 use crate::generate::{self, Config};
-use crate::ids::RequestId;
 use crate::profile::Profile;
 use crate::rng::Entropy;
 use crate::seed::Seed;
@@ -17,7 +16,8 @@ use crate::wire::RequestModel;
 /// Build it with [`Request::builder`]; the writer is pure, so the same model and
 /// spec version always produce the same bytes. With the `arbitrary` feature the
 /// type also implements `arbitrary::Arbitrary`; with `serde` it implements
-/// `serde::Serialize`.
+/// `serde::Serialize` for `serde_json`, which embeds the writer's own JSON as a
+/// raw value (other serializers are not supported).
 #[derive(Clone, Copy, Debug)]
 pub struct Request {
     profile: Profile,
@@ -53,8 +53,7 @@ impl Request {
     /// [`Entropy`](crate::Entropy) works.
     #[must_use]
     pub fn from_entropy(profile: Profile, spec: SpecVersion, entropy: &mut impl Entropy) -> Self {
-        let id = RequestId::from_entropy(entropy);
-        let config = Config::new(id, None, None, None);
+        let config = Config::from_entropy(entropy, None, None, None);
         let model = generate::build_with(profile, &config, entropy);
 
         Self::from_model(profile, None, spec, &model)

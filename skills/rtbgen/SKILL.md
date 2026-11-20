@@ -14,7 +14,7 @@ use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed};
 
 let req = Request::builder(Profile::AppRewarded)
     .seed(Seed::new(42))
-    .impressions(ImpressionCount::new(2))
+    .impressions_exact(ImpressionCount::new(2))
     .deals(Deals::new(3))
     .floor(Floor::cpm(1.50, Currency::USD))
     .build();
@@ -26,6 +26,7 @@ let json: String = req.to_json_string();
 
 - Pick the profile that matches the feature under test, not the simplest one.
   `Sparse` for presence rules, `PmpDeals` for deal priority, `MultiImp` for multi-impression.
+  `MultiImp` picks 2..=3 impressions by itself; `.impressions_exact()` overrides the count.
 - A seed plus a profile is the whole fixture: put the seed in the test, not the JSON.
 - Target OpenRTB 2.5 with `.spec(SpecVersion::V25)`; 2.6 is the default, so do not set it.
 - Add `use rtbgen::Profile::*;` only inside a test module; the variants are unprefixed
@@ -41,7 +42,8 @@ let json: String = req.to_json_string();
 - Property tests: enable the `proptest` feature and use `rtbgen::proptest::request()`; it shrinks
   on the seed and the typed knobs, not on raw bytes.
 - Serialization: enable the `serde` feature and use `serde_json::to_string(&request)`; it is
-  byte-identical to `request.to_json_string()`.
+  byte-identical to `request.to_json_string()`. The adapter targets `serde_json`; other
+  serializers are not supported.
 - A request built from `arbitrary`, `from_entropy` or a custom source has no seed:
   `request.seed()` returns `None`. Keep a `Seed` when you need exact reproduction.
 

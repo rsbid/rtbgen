@@ -3,6 +3,10 @@
 //! The adapter does not have a second writer. It serializes the request's own
 //! JSON string as a [`RawValue`], so key order and number formatting are the
 //! bytes of [`Request::to_json_string`](crate::Request::to_json_string).
+//!
+//! `RawValue` is a `serde_json` protocol: only a `serde_json` serializer emits
+//! the request object. Any other serializer sees the private raw-value marker,
+//! so `Serialize` is documented as `serde_json`-only.
 
 use serde::ser::{Error as _, Serialize, Serializer};
 use serde_json::value::RawValue;

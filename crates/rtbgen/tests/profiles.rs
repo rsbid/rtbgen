@@ -17,6 +17,22 @@ fn keys(value: &Value) -> Vec<String> {
     value.as_object().expect("the request is an object").keys().cloned().collect()
 }
 
+/// Returns the media object of every impression, in order.
+fn media_of(imps: &[Value]) -> Vec<&'static str> {
+    let media = ["banner", "video", "native"];
+    let mut seen = Vec::new();
+
+    for imp in imps {
+        for name in media {
+            if imp.pointer(&std::format!("/{name}")).is_some() {
+                seen.push(name);
+            }
+        }
+    }
+
+    seen
+}
+
 #[test]
 fn every_profile_and_spec_generates_valid_json() {
     for profile in Profile::ALL {
@@ -122,26 +138,24 @@ fn pmp_deals_carries_a_private_auction() {
 
 #[test]
 fn multi_imp_mixes_media_types() {
-    let value = render(Profile::MultiImp, SpecVersion::V26, 9);
-    let imps =
-        value.pointer("/imp").and_then(Value::as_array).expect("the request has impressions");
+    for seed in 0_u64..16 {
+        let value = render(Profile::MultiImp, SpecVersion::V26, seed);
+        let imps =
+            value.pointer("/imp").and_then(Value::as_array).expect("the request has impressions");
 
-    assert!((2..=3).contains(&imps.len()), "multi_imp has one impression");
+        assert!(
+            (2..=3).contains(&imps.len()),
+            "seed {seed} produced {} impressions, outside the profile's 2..=3 default",
+            imps.len()
+        );
 
-    let media = ["banner", "video", "native"];
-    let mut seen = Vec::new();
-    for imp in imps {
-        for name in media {
-            if imp.pointer(&std::format!("/{name}")).is_some() {
-                seen.push(name);
-            }
-        }
+        let mut seen = media_of(imps);
+
+        assert_eq!(seen.len(), imps.len(), "seed {seed}: an impression has two media objects");
+        seen.sort_unstable();
+        seen.dedup();
+        assert_eq!(seen.len(), imps.len(), "seed {seed}: multi_imp repeated a media type");
     }
-
-    assert_eq!(seen.len(), imps.len(), "an impression has two media objects");
-    seen.sort_unstable();
-    seen.dedup();
-    assert_eq!(seen.len(), imps.len(), "multi_imp repeated a media type");
 }
 
 #[test]

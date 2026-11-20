@@ -20,7 +20,7 @@ OPTIONS:
     --seed <U64>          seed of the first request (default 0)
     --spec <2.5|2.6>      OpenRTB revision (default 2.6)
     --count <N>           number of requests (default 1)
-    --impressions <N>     impression count, clamped to 1..=3
+    --impressions <N>     override the profile's impression count (1..=3)
     --deals <N>           add a private marketplace with N deals, clamped to 1..=8
     --floor <CPM>         bid floor of every impression
     --currency <CODE>     currency of --floor (default USD)
@@ -51,7 +51,7 @@ fn build(generate: &Generate, seed: Seed) -> Request {
     let mut builder = Request::builder(generate.profile).seed(seed).spec(generate.spec);
 
     if let Some(count) = generate.impressions {
-        builder = builder.impressions(count);
+        builder = builder.impressions_exact(count);
     }
     if let Some(count) = generate.deals {
         builder = builder.deals(count);

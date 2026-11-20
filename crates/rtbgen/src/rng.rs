@@ -86,18 +86,9 @@ impl Span {
     /// The full `u32` range has `2^32` values, which is why the count is a
     /// `u64` rather than a `u32`.
     #[must_use]
-    pub fn len(self) -> u64 {
+    pub fn count(self) -> u64 {
         let distance = u64::from(self.end).saturating_sub(u64::from(self.start));
         distance.saturating_add(1)
-    }
-
-    /// Returns whether the range has no values.
-    ///
-    /// A [`Span`] is validated at construction, so this is always `false`; it
-    /// pairs with [`Span::len`] and documents the non-empty invariant.
-    #[must_use]
-    pub const fn is_empty(self) -> bool {
-        self.start > self.end
     }
 }
 
@@ -134,6 +125,25 @@ pub trait Entropy {
     }
 }
 
+/// Maps one 64-bit draw into `0..upper`; `upper` may be `2^32`.
+///
+/// Both sources share the mapping, so they cannot drift apart; this is
+/// Lemire's multiply-shift, and a `u64 * u64` always fits `u128`.
+fn below(draw: u64, upper: u64) -> u64 {
+    if upper == 0 {
+        return 0;
+    }
+
+    let product = u128::from(draw).wrapping_mul(u128::from(upper));
+    u64::try_from(product >> 64_u32).unwrap_or(u64::MAX)
+}
+
+/// Maps a draw offset into the validated span.
+fn in_span(range: Span, offset: u64) -> u32 {
+    let value = u64::from(range.start()).saturating_add(offset);
+    u32::try_from(value).unwrap_or(u32::MAX)
+}
+
 /// The deterministic source of every generated value.
 #[derive(Clone, Copy, Debug)]
 pub struct RngEntropy {
@@ -168,24 +178,11 @@ impl RngEntropy {
 
         result
     }
-
-    /// Returns a uniform value in `0..upper`; `upper` may be `2^32`.
-    fn below(&mut self, upper: u64) -> u64 {
-        if upper == 0 {
-            return 0;
-        }
-
-        // Lemire's multiply-shift; `u64 * u64` always fits `u128`.
-        let product = u128::from(self.next_u64()).wrapping_mul(u128::from(upper));
-        u64::try_from(product >> 64_u32).unwrap_or(u64::MAX)
-    }
 }
 
 impl Entropy for RngEntropy {
     fn u32(&mut self, range: Span) -> u32 {
-        let offset = self.below(range.len());
-        let value = u64::from(range.start()).saturating_add(offset);
-        u32::try_from(value).unwrap_or(u32::MAX)
+        in_span(range, below(self.next_u64(), range.count()))
     }
 }
 
@@ -227,23 +224,11 @@ impl<'bytes> BytesEntropy<'bytes> {
 
         u64::from_le_bytes(word)
     }
-
-    /// Returns a uniform value in `0..upper`; `upper` may be `2^32`.
-    fn below(&mut self, upper: u64) -> u64 {
-        if upper == 0 {
-            return 0;
-        }
-
-        let product = u128::from(self.next_u64()).wrapping_mul(u128::from(upper));
-        u64::try_from(product >> 64_u32).unwrap_or(u64::MAX)
-    }
 }
 
 impl Entropy for BytesEntropy<'_> {
     fn u32(&mut self, range: Span) -> u32 {
-        let offset = self.below(range.len());
-        let value = u64::from(range.start()).saturating_add(offset);
-        u32::try_from(value).unwrap_or(u32::MAX)
+        in_span(range, below(self.next_u64(), range.count()))
     }
 }
 
@@ -373,10 +358,10 @@ mod tests {
     #[test]
     fn spans_are_validated() {
         assert!(Span::new(5, 4).is_none());
-        assert_eq!(Span::new(4, 4).map(Span::len), Some(1));
-        assert_eq!(Span::from_zero(0).len(), 1);
-        assert_eq!(Span::from_zero(9).len(), 10);
-        assert_eq!(Span::new(0, u32::MAX).map(Span::len), Some(4_294_967_296));
+        assert_eq!(Span::new(4, 4).map(Span::count), Some(1));
+        assert_eq!(Span::from_zero(0).count(), 1);
+        assert_eq!(Span::from_zero(9).count(), 10);
+        assert_eq!(Span::new(0, u32::MAX).map(Span::count), Some(4_294_967_296));
     }
 
     #[test]

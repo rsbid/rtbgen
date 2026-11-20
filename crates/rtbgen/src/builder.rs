@@ -58,9 +58,13 @@ impl RequestBuilder {
         self
     }
 
-    /// Sets the number of impressions, clamped into `1..=3`.
+    /// Overrides the profile's default number of impressions, clamped into `1..=3`.
+    ///
+    /// This is an explicit override, not a hint: `MultiImp` picks `2..=3` by
+    /// itself, and this method replaces that distribution with exactly the
+    /// given count. Profiles that have no such default get the count as well.
     #[must_use]
-    pub const fn impressions(mut self, impressions: ImpressionCount) -> Self {
+    pub const fn impressions_exact(mut self, impressions: ImpressionCount) -> Self {
         self.impressions = Some(impressions);
         self
     }
@@ -119,7 +123,7 @@ mod tests {
         let builder = RequestBuilder::new(Profile::AppRewarded)
             .seed(Seed::new(42))
             .spec(SpecVersion::V25)
-            .impressions(ImpressionCount::new(2))
+            .impressions_exact(ImpressionCount::new(2))
             .deals(Deals::new(3))
             .floor(Floor::cpm(1.5, crate::currency::Currency::USD));
 

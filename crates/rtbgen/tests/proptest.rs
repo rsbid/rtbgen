@@ -34,3 +34,16 @@ proptest! {
         }
     }
 }
+
+#[cfg(feature = "serde")]
+proptest! {
+    #[test]
+    fn the_writer_and_serde_agree_on_the_tree(request in rtbgen::proptest::request()) {
+        let from_writer: serde_json::Value = serde_json::from_str(&request.to_json_string())
+            .expect("a generated request is valid JSON");
+        let from_serde: serde_json::Value =
+            serde_json::to_value(request).expect("a request always serializes");
+
+        prop_assert_eq!(from_writer, from_serde);
+    }
+}

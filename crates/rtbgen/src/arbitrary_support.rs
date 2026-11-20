@@ -11,7 +11,6 @@ use crate::currency::Currency;
 use crate::deals::Deals;
 use crate::floor::Floor;
 use crate::generate::{self, Config};
-use crate::ids::RequestId;
 use crate::impressions::ImpressionCount;
 use crate::profile::Profile;
 use crate::request::Request;
@@ -60,8 +59,7 @@ impl Request {
         let remaining = u.len();
         let bytes = u.bytes(remaining).unwrap_or(&[]);
         let mut entropy = BytesEntropy::new(bytes);
-        let id = RequestId::from_entropy(&mut entropy);
-        let config = Config::new(id, impressions, deals, floor);
+        let config = Config::from_entropy(&mut entropy, impressions, deals, floor);
         let model = generate::build_with(profile, &config, &mut entropy);
 
         Self::from_model(profile, None, spec, &model)

@@ -9,7 +9,12 @@ pub struct Deals(u8);
 
 impl Deals {
     /// The largest number of deals a single `pmp` object can carry.
-    pub const MAX: Self = Self(8);
+    #[expect(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        reason = "the wire cap is 8, which fits u8"
+    )]
+    pub const MAX: Self = Self(crate::wire::MAX_DEALS as u8);
 
     /// Builds a deal count, clamping it into `1..=8`.
     #[must_use]
@@ -46,10 +51,5 @@ mod tests {
     fn counts_are_clamped_instead_of_rejected() {
         assert_eq!(Deals::new(0).count(), 1);
         assert_eq!(Deals::new(u8::MAX).count(), 8);
-    }
-
-    #[test]
-    fn the_cap_is_the_wire_cap() {
-        assert_eq!(usize::from(Deals::MAX.count()), crate::wire::MAX_DEALS);
     }
 }

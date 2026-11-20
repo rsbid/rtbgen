@@ -12,7 +12,7 @@ use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed};
 
 let req = Request::builder(Profile::AppRewarded)
     .seed(Seed::new(42))
-    .impressions(ImpressionCount::new(2))
+    .impressions_exact(ImpressionCount::new(2))
     .deals(Deals::new(3))
     .floor(Floor::cpm(1.50, Currency::USD))
     .build();
@@ -21,7 +21,7 @@ let json: String = req.to_json_string();
 ```
 
 Same seed and config produce byte-identical output; the output is covered by a versioned
-golden corpus. Knobs widen a profile, they never conflict with it, so `build()` cannot fail.
+golden corpus. Every knob is a typed value, so `build()` cannot fail.
 
 ## Which call do I need?
 
@@ -30,7 +30,7 @@ golden corpus. Knobs widen a profile, they never conflict with it, so `build()` 
 | A valid request for a test | `Request::builder(Profile::SiteDisplay).seed(Seed::new(1)).build()` |
 | A specific shape (video, native, PMP, app, multi-impression) | pick the matching `Profile` |
 | An OpenRTB 2.5 request | add `.spec(SpecVersion::V25)`; 2.6 is the default |
-| Several impressions | `.impressions(ImpressionCount::new(2))`, clamped to 1..=3 |
+| Several impressions | `.impressions_exact(ImpressionCount::new(2))`: an exact count in 1..=3, over a profile's default |
 | A private marketplace | `.deals(Deals::new(3))`, on any profile |
 | A bid floor | `.floor(Floor::cpm(1.50, Currency::USD))` |
 | An exact bug reproduction | keep the `Seed` in the test, not the JSON |
@@ -51,7 +51,7 @@ golden corpus. Knobs widen a profile, they never conflict with it, so `build()` 
 | `AppRewarded` | app, video | in-app rewarded |
 | `AppBanner` | app, banner | in-app display |
 | `PmpDeals` | site, banner + pmp | deal priority, deal floors |
-| `MultiImp` | site, mixed media | multi-impression auctions, truncation |
+| `MultiImp` | site, mixed media | multi-impression auctions, truncation (2..=3 imp by default) |
 | `Sparse` | `id` + one banner `imp` | presence rules (missing device/site) |
 | `Maximal` | every field the model can emit | the largest valid request |
 
@@ -94,7 +94,9 @@ proptest! {
 ```
 
 With the `serde` feature, `serde_json::to_string(&request)` is byte-identical to
-`request.to_json_string()`. For your own deterministic source, implement `rtbgen::Entropy` and
+`request.to_json_string()`. `Serialize` targets `serde_json`: it embeds the writer's JSON as a
+raw value, which only `serde_json` understands; another serializer sees a private marker, not the
+request object. For your own deterministic source, implement `rtbgen::Entropy` and
 call `rtbgen::Request::from_entropy(profile, spec, &mut source)`; such a request has no seed.
 
 ## Add to your AGENTS.md
@@ -128,7 +130,7 @@ rtbgen = { version = "0.2", features = ["arbitrary", "proptest", "serde"] }
 |---|---|
 | `arbitrary` | `arbitrary::Arbitrary for Request`: every byte slice becomes one valid request |
 | `proptest` | `rtbgen::proptest::request()`: a strategy that shrinks on the typed knobs |
-| `serde` | `serde::Serialize for Request`: `serde_json::to_string` equals `to_json_string` |
+| `serde` | `serde::Serialize for Request` for `serde_json`: `to_string` equals `to_json_string`; other formats are not supported |
 
 ## Command line
 

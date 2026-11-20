@@ -80,7 +80,7 @@ impl CorpusEntry {
         let mut builder = Request::builder(self.profile).seed(self.seed).spec(self.spec);
 
         if let Some(count) = self.impressions {
-            builder = builder.impressions(count);
+            builder = builder.impressions_exact(count);
         }
         if let Some(count) = self.deals {
             builder = builder.deals(count);
