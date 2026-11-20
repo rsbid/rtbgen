@@ -6,8 +6,9 @@ use std::string::String;
 
 use serde_json::Value;
 
-use super::RequestModel;
+use super::{Currencies, RequestModel, WireCurrency, WireId, WireNumber};
 use crate::ids::RequestId;
+use crate::raw::RawJson;
 use crate::version::SpecVersion;
 use crate::write::request;
 
@@ -60,7 +61,7 @@ fn maximal_imp_is_complete() {
     assert_eq!(value.pointer("/imp/0/video/startdelay").and_then(Value::as_i64), Some(-1));
     assert_eq!(
         value.pointer("/imp/0/native/request").and_then(Value::as_str),
-        Some(r#"{"native":{"ver":"1.2"}}"#)
+        Some(r#"{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":80}}]}"#)
     );
     assert_eq!(value.pointer("/imp/0/bidfloor"), Some(&serde_json::json!(1.5_f64)));
     assert_eq!(value.pointer("/imp/0/pmp/deals/0/id").and_then(Value::as_str), Some("deal-1"));
@@ -117,6 +118,62 @@ fn v25_is_v26_without_the_26_only_fields() {
     }
 
     assert_eq!(expected, v25);
+}
+
+#[test]
+fn raw_wire_unions_stay_valid_json() {
+    let mut model = RequestModel::maximal(RequestId::from_seed(crate::seed::Seed::new(42)));
+    model.set_id(WireId::Literal("req-\"quoted\""));
+    model.set_cur(Currencies::Text("USD"));
+
+    let imp = model.impressions_mut().first_mut().expect("the maximal model has an impression");
+    imp.set_id(WireId::Literal("imp-\u{1f3af}"));
+    imp.set_bidfloor(Some(WireNumber::Text("1.50")));
+    imp.set_bidfloorcur(Some(WireCurrency::Text("usd")));
+    if let Some(banner) = imp.banner_mut() {
+        banner.set_w(Some(-1_i32));
+        banner.set_h(None);
+    }
+
+    let value: Value =
+        serde_json::from_str(&render(&model, SpecVersion::V26)).expect("the writer emits JSON");
+
+    assert_eq!(value.pointer("/id").and_then(Value::as_str), Some("req-\"quoted\""));
+    assert_eq!(value.pointer("/imp/0/id").and_then(Value::as_str), Some("imp-\u{1f3af}"));
+    assert_eq!(value.pointer("/imp/0/bidfloor").and_then(Value::as_str), Some("1.50"));
+    assert_eq!(value.pointer("/imp/0/bidfloorcur").and_then(Value::as_str), Some("usd"));
+    assert_eq!(value.pointer("/imp/0/banner/w").and_then(Value::as_i64), Some(-1));
+    assert!(value.pointer("/imp/0/banner/h").is_none(), "the missing height was written");
+    assert_eq!(value.pointer("/cur").and_then(Value::as_str), Some("USD"));
+}
+
+#[test]
+fn a_raw_currency_array_is_spliced_as_json() {
+    let mut model = RequestModel::maximal(RequestId::from_seed(crate::seed::Seed::new(1)));
+    model.set_cur(Currencies::Raw(RawJson::from_static(r#"["US1","usd"]"#)));
+
+    let value: Value =
+        serde_json::from_str(&render(&model, SpecVersion::V26)).expect("the writer emits JSON");
+
+    assert_eq!(value.pointer("/cur/0").and_then(Value::as_str), Some("US1"));
+    assert_eq!(value.pointer("/cur/1").and_then(Value::as_str), Some("usd"));
+}
+
+#[test]
+fn extra_impressions_repeat_the_last_object() {
+    let mut model = RequestModel::maximal(RequestId::from_seed(crate::seed::Seed::new(5)));
+    model.impressions_mut().set_extra(3);
+
+    let value: Value =
+        serde_json::from_str(&render(&model, SpecVersion::V26)).expect("the writer emits JSON");
+
+    let impressions = value.pointer("/imp").and_then(Value::as_array).expect("an imp array");
+    assert_eq!(impressions.len(), 4, "the repeat count was not written");
+
+    let first = impressions.first().and_then(|imp| imp.pointer("/id"));
+    for imp in impressions {
+        assert_eq!(imp.pointer("/id"), first, "a repeated impression drifted");
+    }
 }
 
 fn remove_path(value: &mut Value, path: &str) -> bool {

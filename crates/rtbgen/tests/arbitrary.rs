@@ -54,6 +54,13 @@ fn a_byte_generated_request_has_no_seed() {
 }
 
 #[test]
+fn some_byte_inputs_are_degraded() {
+    let degraded = (0_u8..=u8::MAX).any(|byte| generate(&[byte; 64]).mutation().is_some());
+
+    assert!(degraded, "the adapter never selects a mutation");
+}
+
+#[test]
 fn every_profile_is_reachable() {
     let mut seen = Vec::new();
 

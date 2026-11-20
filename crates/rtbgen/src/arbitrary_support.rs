@@ -9,6 +9,7 @@ use ::arbitrary::{Arbitrary, Unstructured};
 
 use crate::currency::Currency;
 use crate::deals::Deals;
+use crate::degrade::DegradeRate;
 use crate::floor::Floor;
 use crate::generate::{self, Config};
 use crate::impressions::ImpressionCount;
@@ -55,13 +56,18 @@ impl Request {
 
             Floor::from_scaled(scaled, currency)
         });
+        // A whole percentage: 0..=100. A byte above 100 maps back into range
+        // instead of saturating at 100, so a fuzzer sees the whole scale.
+        let degrade = u.arbitrary::<u8>().unwrap_or(0).checked_rem(101).unwrap_or(0);
 
         let remaining = u.len();
         let bytes = u.bytes(remaining).unwrap_or(&[]);
         let mut entropy = BytesEntropy::new(bytes);
-        let config = Config::from_entropy(&mut entropy, impressions, deals, floor);
-        let model = generate::build_with(profile, &config, &mut entropy);
+        let config = Config::from_entropy(&mut entropy, impressions, deals, floor)
+            .degrade(DegradeRate::percent(u16::from(degrade)))
+            .spec(spec);
+        let generated = generate::build_with(profile, &config, &mut entropy);
 
-        Self::from_model(profile, None, spec, &model)
+        Self::from_generated(profile, None, spec, &generated)
     }
 }

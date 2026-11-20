@@ -23,6 +23,7 @@
 //! | You want | Do this |
 //! |---|---|
 //! | A valid request for a test | [`Request::builder`] with the matching [`Profile`] |
+//! | A request that violates the spec | add `.degrade(DegradeRate::percent(5))` |
 //! | An `OpenRTB` 2.5 request | add `.spec(SpecVersion::V25)`; 2.6 is the default |
 //! | Extra impressions, a marketplace or a floor | [`ImpressionCount`], [`Deals`], [`Floor`] |
 //! | An exact bug reproduction | keep the [`Seed`] in the test, not the JSON |
@@ -37,6 +38,30 @@
 //! fields the 2.6 revision added, and [`SpecVersion::V26`] is the default.
 //! `OpenRTB` 3.0 is a different object model and is planned for a future version
 //! of this project; it will not change 2.x output.
+//!
+//! ## Malformed requests
+//!
+//! [`DegradeRate`] gives a request exactly one deliberate `OpenRTB` violation,
+//! so a parser test can exercise its failure path with a realistic document:
+//!
+//! ```rust
+//! use rtbgen::{DegradeRate, Profile, Request, Seed};
+//!
+//! let req = Request::builder(Profile::SiteVideo)
+//!     .seed(Seed::new(7))
+//!     .degrade(DegradeRate::percent(5))
+//!     .build();
+//!
+//! let json: String = req.to_json_string();
+//! assert!(serde_json::from_str::<serde_json::Value>(&json).is_ok(), "still JSON");
+//! if let Some(mutation) = req.mutation() {
+//!     assert!(!mutation.name().is_empty());
+//! }
+//! ```
+//!
+//! `percent(0)` is byte-identical to not calling the knob; `percent(100)`
+//! always mutates. [`Mutation::ALL`] is the closed set and
+//! [`Request::mutation`] names the defect a request carries.
 //!
 //! ## Features
 //!
@@ -73,6 +98,7 @@ mod code;
 pub mod corpus;
 mod currency;
 mod deals;
+mod degrade;
 #[expect(
     clippy::redundant_pub_crate,
     reason = "the module is crate-private; `pub` would trip `unreachable_pub`"
@@ -123,6 +149,7 @@ mod write;
 pub use builder::RequestBuilder;
 pub use currency::{Currency, UnknownCurrency};
 pub use deals::Deals;
+pub use degrade::{DegradeRate, Mutation};
 pub use floor::Floor;
 pub use impressions::ImpressionCount;
 pub use profile::{Profile, UnknownProfile};

@@ -1,6 +1,6 @@
 use crate::ids::ImpId;
 use crate::rng::{Entropy, Share};
-use crate::wire::{ImpList, RequestModel};
+use crate::wire::{ImpList, RequestModel, WireId};
 
 use super::Config;
 
@@ -34,7 +34,7 @@ fn maximal_impressions(model: &RequestModel, count: u8) -> ImpList {
 
     for index in 1..=count {
         let mut imp = base;
-        imp.set_id(ImpId::new(u32::from(index)));
+        imp.set_id(WireId::id(ImpId::new(u32::from(index))));
         imps.push(&imp);
     }
 

@@ -10,6 +10,7 @@ use ::proptest::sample::select;
 
 use crate::currency::Currency;
 use crate::deals::Deals;
+use crate::degrade::DegradeRate;
 use crate::floor::Floor;
 use crate::impressions::ImpressionCount;
 use crate::profile::Profile;
@@ -26,9 +27,10 @@ const CURRENCIES: &[Currency] = &[Currency::USD, Currency::EUR, Currency::GBP];
 /// The seed and the revision are arbitrary; the impression count stays inside
 /// `1..=3` and the deal count inside `1..=8`, and both are optional, so the
 /// strategy also produces requests with the profile's own defaults and without
-/// a `pmp`. The floor is optional too. Every generated request is built by the
-/// same core as a hand-written builder, so a failing case shrinks to a small
-/// seed or a smaller knob rather than to an opaque byte string.
+/// a `pmp`. The floor and the degrade rate are optional too, and the rate
+/// shrinks toward zero. Every generated request is built by the same core as a
+/// hand-written builder, so a failing case shrinks to a small seed or a smaller
+/// knob rather than to an opaque byte string.
 pub fn request() -> impl Strategy<Value = Request> {
     (
         select(PROFILES),
@@ -37,14 +39,18 @@ pub fn request() -> impl Strategy<Value = Request> {
         option::of(1_u8..=ImpressionCount::MAX.count()),
         option::of(1_u8..=Deals::MAX.count()),
         option::of((0_i64..=1_000_000_i64, select(CURRENCIES))),
+        option::of(0_u8..=100),
     )
-        .prop_map(|(profile, seed, spec, impressions, deals, floor)| {
+        .prop_map(|(profile, seed, spec, impressions, deals, floor, degrade)| {
             let builder = Request::builder(profile).seed(Seed::new(seed)).spec(spec);
             let builder = impressions
                 .map_or(builder, |count| builder.impressions_exact(ImpressionCount::new(count)));
             let builder = deals.map_or(builder, |count| builder.deals(Deals::new(count)));
             let builder = floor.map_or(builder, |(scaled, currency)| {
                 builder.floor(Floor::from_scaled(scaled, currency))
+            });
+            let builder = degrade.map_or(builder, |percent| {
+                builder.degrade(DegradeRate::percent(u16::from(percent)))
             });
 
             builder.build()

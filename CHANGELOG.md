@@ -8,6 +8,49 @@ The emitted bytes are part of the public API: changing them for an existing
 `(spec, profile, seed, knobs)` is a breaking change. `corpus/v1` is the initial
 byte contract.
 
+## [0.3.0] - 2026-11-20
+
+The `degrade` knob, the closed mutation set, and four fields the parser matrix caught. Existing
+profiles change bytes, so `corpus/v2` is the new byte contract; `corpus/v1` stays as history.
+
+### Added
+
+- `DegradeRate` and `RequestBuilder::degrade`: about one request in the given share carries
+  **exactly one** deliberate OpenRTB violation. `percent(0)` is byte-identical to not calling
+  the knob, `percent(100)` always mutates, and the mutation is drawn after the profile body, so
+  a request without a mutation keeps the plain bytes.
+- `Mutation`, the closed set of 25 defects: auction-type bounds, `bidfloor` as a string, invalid
+  `bidfloorcur`, IPv6 `device.ip`, empty/blank/non-ASCII request ids, `site` plus `app`,
+  over-cap and 10 000-impression bodies, duplicate `imp[].id`, `tmax` 120000/0/absent, missing or
+  dotted `consent`, negative or missing banner size, deeply nested `ext`, and wrong-shaped `cur`.
+  `Mutation::ALL` lists the set and `Request::mutation()` names the defect a request carries.
+- `Request::from_entropy_with(profile, spec, rate, entropy)` for a custom deterministic source.
+- `--degrade <PERCENT>` in the CLI, accepting `5` and `5%`.
+- `examples/05_malformed_input.rs`.
+
+### Changed (breaking for snapshots)
+
+- `device.ifa`, not `device.idfa`: `idfa` is not an OpenRTB field, and `rtblint-core` rejects
+  every request that carries it. Every profile that emits a device changes bytes.
+- `imp.native.request` is the Native Markup Request root; the obsolete top-level `"native"`
+  wrapper is gone.
+- `imp.video.skipmin` and `skipafter` appear only when `skip` is set, as the spec requires.
+- `regs.gpp_sid` appears only when `regs.gpp` is present, so the section ids are scoped.
+- The corpus moved to `corpus/v2`; `corpus/v1` is kept as the previous contract. Regenerate
+  `insta` snapshots: every existing `(spec, profile, seed, knobs)` tuple produced new bytes.
+- The `arbitrary` adapter draws a degrade rate as one of its typed knobs, so a fuzz input can
+  produce a malformed request. This changes the adapter's byte mapping for an existing input
+  (the pinned adapter fixture changes). The `proptest` strategy varies the rate and shrinks
+  toward zero.
+
+### Notes
+
+- The writer now carries the raw wire value a mutation needs (a number or a string, a code or a
+  literal, a code array or a literal, a generated id or a literal). The typed variants write
+  exactly the bytes they wrote before the union existed.
+- A mutation never breaks JSON syntax: it breaks OpenRTB.
+- The core still has no unconditional dependency and builds with `--no-default-features`.
+
 ## [0.2.0] - 2026-11-20
 
 The entropy seam and the adapters that use it. No emitted byte changes: `corpus/v1` is
@@ -75,5 +118,6 @@ The first release: valid OpenRTB 2.5/2.6 requests for every shape.
 - `Maximal` alternates `site` and `app` with the seed, because OpenRTB forbids
   both supply sources in one request.
 
+[0.3.0]: https://github.com/rsbid/rtbgen/releases/tag/v0.3.0
 [0.2.0]: https://github.com/rsbid/rtbgen/releases/tag/v0.2.0
 [0.1.0]: https://github.com/rsbid/rtbgen/releases/tag/v0.1.0

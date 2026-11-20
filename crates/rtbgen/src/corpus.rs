@@ -1,11 +1,13 @@
 //! The versioned golden corpus.
 //!
 //! Every entry is one `(spec, profile, seed, knobs)` tuple whose bytes are
-//! checked into `corpus/v1/`. The corpus is the executable form of the
+//! checked into `corpus/v2/`. The corpus is the executable form of the
 //! determinism contract: regenerate it with `rtbgen corpus --write`, never by
-//! hand, and treat a changed file as a byte change of the public API.
+//! hand, and treat a changed file as a byte change of the public API. `v1` is
+//! kept as the previous byte contract.
 
 use crate::deals::Deals;
+use crate::degrade::DegradeRate;
 use crate::floor::Floor;
 use crate::impressions::ImpressionCount;
 use crate::profile::Profile;
@@ -14,10 +16,10 @@ use crate::seed::Seed;
 use crate::version::SpecVersion;
 
 /// The version of the corpus contract.
-pub const VERSION: &str = "v1";
+pub const VERSION: &str = "v2";
 
 /// The directory, relative to the crate root, that holds the corpus.
-pub const DIR: &str = "corpus/v1";
+pub const DIR: &str = "corpus/v2";
 
 /// One golden fixture.
 #[derive(Clone, Copy, Debug)]
@@ -29,6 +31,7 @@ pub struct CorpusEntry {
     impressions: Option<ImpressionCount>,
     deals: Option<Deals>,
     floor: Option<Floor>,
+    degrade: DegradeRate,
 }
 
 impl CorpusEntry {
@@ -74,10 +77,17 @@ impl CorpusEntry {
         self.floor
     }
 
+    /// The degrade rate of the entry, off unless it exercises the knob.
+    #[must_use]
+    pub const fn degrade(self) -> DegradeRate {
+        self.degrade
+    }
+
     /// Regenerates the fixture.
     #[must_use]
     pub fn request(self) -> Request {
-        let mut builder = Request::builder(self.profile).seed(self.seed).spec(self.spec);
+        let mut builder =
+            Request::builder(self.profile).seed(self.seed).spec(self.spec).degrade(self.degrade);
 
         if let Some(count) = self.impressions {
             builder = builder.impressions_exact(count);
@@ -102,6 +112,7 @@ const fn entry(name: &'static str, spec: SpecVersion, profile: Profile, seed: u6
         impressions: None,
         deals: None,
         floor: None,
+        degrade: DegradeRate::OFF,
     }
 }
 
@@ -126,6 +137,11 @@ const fn with_floor_in(
     currency: crate::Currency,
 ) -> CorpusEntry {
     entry.floor = Some(Floor::from_scaled(scaled, currency));
+    entry
+}
+
+const fn with_degrade(mut entry: CorpusEntry, percent: u16) -> CorpusEntry {
+    entry.degrade = DegradeRate::percent(percent);
     entry
 }
 
@@ -200,6 +216,12 @@ pub const ALL: &[CorpusEntry] = &[
         ),
         2,
     ),
+    with_degrade(
+        entry("degrade-site-display-v26-35", SpecVersion::V26, Profile::SiteDisplay, 35),
+        100,
+    ),
+    with_degrade(entry("degrade-site-video-v25-5", SpecVersion::V25, Profile::SiteVideo, 5), 100),
+    with_degrade(entry("degrade-sparse-v26-8", SpecVersion::V26, Profile::Sparse, 8), 100),
 ];
 
 #[cfg(test)]
@@ -245,6 +267,7 @@ mod tests {
         assert!(ALL.iter().any(|entry| entry.impressions().is_some()));
         assert!(ALL.iter().any(|entry| entry.deals().is_some()));
         assert!(ALL.iter().any(|entry| entry.floor().is_some()));
+        assert!(ALL.iter().any(|entry| entry.degrade().basis_points() > 0));
     }
 
     #[test]

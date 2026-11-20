@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use rtbgen::corpus::{self, CorpusEntry};
-use rtbgen::{Profile, Seed, SpecVersion};
+use rtbgen::{DegradeRate, Mutation, Profile, Seed, SpecVersion};
 use serde_json::Value;
 
 #[test]
@@ -40,6 +40,11 @@ fn the_manifest_lists_every_entry_and_nothing_else() {
         assert_eq!(listed.knobs & 1 != 0, entry.impressions().is_some(), "{}", entry.name());
         assert_eq!(listed.knobs & 2 != 0, entry.deals().is_some(), "{}", entry.name());
         assert_eq!(listed.knobs & 4 != 0, entry.floor().is_some(), "{}", entry.name());
+        let expected_degrade = listed.degrade.map_or(DegradeRate::OFF, DegradeRate::percent);
+        assert_eq!(expected_degrade, entry.degrade(), "{}", entry.name());
+
+        let mutation = entry.request().mutation();
+        assert_eq!(listed.mutation.as_deref(), mutation.map(Mutation::name), "{}", entry.name());
     }
 }
 
@@ -79,6 +84,8 @@ struct Listed {
     seed: u64,
     /// Bit set: 1 = impressions, 2 = deals, 4 = floor.
     knobs: u8,
+    degrade: Option<u16>,
+    mutation: Option<String>,
 }
 
 fn parse_manifest() -> Vec<Listed> {
@@ -102,6 +109,8 @@ fn parse_manifest() -> Vec<Listed> {
                 profile: String::new(),
                 seed: 0,
                 knobs: 0,
+                degrade: None,
+                mutation: None,
             });
             continue;
         }
@@ -120,6 +129,8 @@ fn parse_manifest() -> Vec<Listed> {
             "impressions" => entry.knobs |= 1,
             "deals" => entry.knobs |= 2,
             "floor_cpm" => entry.knobs |= 4,
+            "degrade" => entry.degrade = Some(value.parse().expect("a degrade percentage")),
+            "mutation" => entry.mutation = Some(value.to_owned()),
             _ => {}
         }
     }

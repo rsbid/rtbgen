@@ -2,6 +2,7 @@ use core::fmt;
 
 use super::MAX_IMPRESSIONS;
 use super::context::Pmp;
+use super::field::{WireCurrency, WireId, WireNumber};
 use super::media::{Audio, Banner, Native, Video};
 use crate::code::SsaiMode;
 use crate::currency::Currency;
@@ -10,22 +11,19 @@ use crate::ids::ImpId;
 use crate::money::Money;
 use crate::raw::RawJson;
 use crate::version::SpecVersion;
-use crate::write::{
-    Object, field_id, object, object_field, option_currency, option_money, option_number,
-    option_raw,
-};
+use crate::write::{Object, object, object_field, option_number, option_raw};
 
 /// One impression opportunity.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Imp {
-    id: ImpId,
+    id: WireId<ImpId>,
     banner: Option<Banner>,
     video: Option<Video>,
     audio: Option<Audio>,
     native: Option<Native>,
     pmp: Option<Pmp>,
-    bidfloor: Option<Money>,
-    bidfloorcur: Option<Currency>,
+    bidfloor: Option<WireNumber>,
+    bidfloorcur: Option<WireCurrency>,
     secure: Option<Flag>,
     rwdd: Option<Flag>,
     ssai: Option<SsaiMode>,
@@ -33,13 +31,13 @@ pub(crate) struct Imp {
 }
 
 setters!(Imp {
-    set_id => id: ImpId,
+    set_id => id: WireId<ImpId>,
     set_banner => banner: Option<Banner>,
     set_video => video: Option<Video>,
     set_native => native: Option<Native>,
     set_pmp => pmp: Option<Pmp>,
-    set_bidfloor => bidfloor: Option<Money>,
-    set_bidfloorcur => bidfloorcur: Option<Currency>,
+    set_bidfloor => bidfloor: Option<WireNumber>,
+    set_bidfloorcur => bidfloorcur: Option<WireCurrency>,
     set_secure => secure: Option<Flag>,
 });
 
@@ -49,7 +47,7 @@ impl Imp {
         f: &mut Object<'_, W>,
         spec: SpecVersion,
     ) -> fmt::Result {
-        field_id(f, "id", self.id)?;
+        self.id.write_field(f, "id")?;
 
         if let Some(banner) = &self.banner {
             object_field(f, "banner", |f| banner.write(f))?;
@@ -67,8 +65,12 @@ impl Imp {
             object_field(f, "pmp", |f| pmp.write(f))?;
         }
 
-        option_money(f, "bidfloor", self.bidfloor)?;
-        option_currency(f, "bidfloorcur", self.bidfloorcur)?;
+        if let Some(bidfloor) = self.bidfloor {
+            bidfloor.write_field(f, "bidfloor")?;
+        }
+        if let Some(bidfloorcur) = self.bidfloorcur {
+            bidfloorcur.write_field(f, "bidfloorcur")?;
+        }
         option_number(f, "secure", self.secure)?;
 
         if spec.is_v26() {
@@ -79,9 +81,19 @@ impl Imp {
         option_raw(f, "ext", self.ext)
     }
 
-    #[cfg(test)]
-    pub(crate) const fn id_for_tests(self) -> ImpId {
+    /// Returns the impression identifier.
+    pub(crate) const fn id(&self) -> WireId<ImpId> {
         self.id
+    }
+
+    /// Returns the banner of this impression, when it has one.
+    pub(crate) const fn banner(&self) -> Option<&Banner> {
+        self.banner.as_ref()
+    }
+
+    /// Returns the banner of this impression for mutation, when it has one.
+    pub(crate) const fn banner_mut(&mut self) -> Option<&mut Banner> {
+        self.banner.as_mut()
     }
 
     #[cfg(test)]
@@ -92,14 +104,14 @@ impl Imp {
     /// Builds the impression with every field the writer can emit.
     pub(crate) fn maximal() -> Self {
         Self {
-            id: ImpId::new(1),
+            id: WireId::id(ImpId::new(1)),
             banner: Some(Banner::maximal()),
             video: Some(Video::maximal()),
             audio: Some(Audio::maximal()),
             native: Some(Native::maximal()),
             pmp: Some(Pmp::maximal()),
-            bidfloor: Some(Money::from_scaled(15_000)),
-            bidfloorcur: Some(Currency::USD),
+            bidfloor: Some(WireNumber::number(Money::from_scaled(15_000))),
+            bidfloorcur: Some(WireCurrency::code(Currency::USD)),
             secure: Some(Flag::Yes),
             rwdd: Some(Flag::Yes),
             ssai: Some(SsaiMode::SERVER_SIDE),
@@ -113,19 +125,30 @@ impl Imp {
 pub(crate) struct ImpList {
     items: [Imp; MAX_IMPRESSIONS],
     len: u8,
+    /// Extra copies of the last impression, written by `degrade`.
+    ///
+    /// The exchange cap is three impressions, so a larger body cannot be stored
+    /// as a list of structs without sized storage. Repeating the last item keeps
+    /// the model allocation-free while the writer still emits every object.
+    extra: u16,
 }
 
 impl Default for ImpList {
     #[expect(clippy::large_stack_arrays, reason = "the wire model is allocation-free by design")]
     fn default() -> Self {
-        Self { items: [Imp::default(); MAX_IMPRESSIONS], len: 0 }
+        Self { items: [Imp::default(); MAX_IMPRESSIONS], len: 0, extra: 0 }
     }
 }
 
 impl ImpList {
-    #[cfg(test)]
+    /// Returns the number of stored impressions, without the repeated copies.
     pub(crate) const fn count(&self) -> u8 {
         self.len
+    }
+
+    /// Sets how many extra copies of the last impression the writer emits.
+    pub(crate) const fn set_extra(&mut self, extra: u16) {
+        self.extra = extra;
     }
 
     pub(crate) fn push(&mut self, imp: &Imp) {
@@ -144,6 +167,14 @@ impl ImpList {
         self.items.iter_mut().take(len)
     }
 
+    /// Returns the first impression, when the list is not empty.
+    pub(crate) const fn first_mut(&mut self) -> Option<&mut Imp> {
+        if self.len == 0 {
+            return None;
+        }
+        self.items.first_mut()
+    }
+
     pub(crate) fn write<W: fmt::Write>(
         &self,
         f: &mut Object<'_, W>,
@@ -160,6 +191,15 @@ impl ImpList {
                 f.out().write_char(',')?;
             }
             object(f.out(), |f| imp.write(f, spec))?;
+        }
+
+        if self.len > 0
+            && let Some(last) = self.items.get(usize::from(self.len).saturating_sub(1))
+        {
+            for _ in 0..self.extra {
+                f.out().write_char(',')?;
+                object(f.out(), |f| last.write(f, spec))?;
+            }
         }
 
         f.out().write_char(']')

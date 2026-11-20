@@ -1,6 +1,6 @@
 use crate::ids::ImpId;
 use crate::rng::Entropy;
-use crate::wire::{Banner, Imp, ImpList, RequestModel};
+use crate::wire::{Banner, Imp, ImpList, RequestModel, WireId};
 
 use super::Config;
 use super::parts;
@@ -16,17 +16,17 @@ pub(super) fn build(_rng: &mut impl Entropy, config: &Config) -> RequestModel {
 
     for index in 1..=count {
         let mut banner = Banner::default();
-        banner.set_w(Some(300));
-        banner.set_h(Some(250));
+        banner.set_w(Some(300_i32));
+        banner.set_h(Some(250_i32));
 
         let mut imp = Imp::default();
-        imp.set_id(ImpId::new(u32::from(index)));
+        imp.set_id(WireId::id(ImpId::new(u32::from(index))));
         imp.set_banner(Some(banner));
         imps.push(&imp);
     }
 
     let mut request = RequestModel::default();
-    request.set_id(config.id());
+    request.set_id(WireId::id(config.id()));
     request.set_imp(imps);
     request
 }

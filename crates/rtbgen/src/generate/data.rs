@@ -98,8 +98,8 @@ pub(super) const APP_DEVICES: &[DeviceProfile] = &[
     ),
 ];
 pub(super) const IPS: &[&str] = &["203.0.113.7", "198.51.100.23", "192.0.2.44"];
-pub(super) const DEFAULT_IDFA: &str = "A1B2C3D4-0000-4000-8000-000000000001";
-pub(super) const IDFAS: &[&str] = &[DEFAULT_IDFA, "A1B2C3D4-0000-4000-8000-000000000002"];
+pub(super) const DEFAULT_IFA: &str = "A1B2C3D4-0000-4000-8000-000000000001";
+pub(super) const IFAS: &[&str] = &[DEFAULT_IFA, "A1B2C3D4-0000-4000-8000-000000000002"];
 pub(super) const GEOS: &[(&str, &str, &str, &str)] = &[
     ("RU", "MOW", "Moscow", "101000"),
     ("US", "NY", "New York", "10001"),
@@ -128,7 +128,7 @@ pub(super) const BANNER_POS: &[PlacementPosition] = &[
     PlacementPosition::BELOW_THE_FOLD,
 ];
 pub(super) const BANNER_TOPTRAME: &[Flag] = &[Flag::No, Flag::Yes];
-pub(super) const SIZES: &[(u32, u32)] = &[(300, 250), (320, 50), (728, 90), (300, 600), (970, 250)];
+pub(super) const SIZES: &[(i32, i32)] = &[(300, 250), (320, 50), (728, 90), (300, 600), (970, 250)];
 pub(super) const FLOORS: &[i64] = &[5_000, 10_000, 15_000, 20_000];
 pub(super) const AT: &[AuctionType] = &[AuctionType::FIRST_PRICE, AuctionType::SECOND_PRICE_PLUS];
 pub(super) const TMAX: &[u32] = &[800, 1_000, 1_200, 1_500];
@@ -154,10 +154,10 @@ pub(super) const VIDEO_DELIVERY: &[DeliveryMethod] = &[DeliveryMethod::PROGRESSI
 pub(super) const COMPANION_TYPES: &[CompanionType] = &[CompanionType::STATIC];
 
 /// The native request is a JSON document inside a JSON string.
-pub(super) const DEFAULT_NATIVE_REQUEST: &str = r#"{"native":{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":80}},{"id":2,"required":1,"img":{"type":3,"w":300,"h":250}}]}}"#;
+pub(super) const DEFAULT_NATIVE_REQUEST: &str = r#"{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":80}},{"id":2,"required":1,"img":{"type":3,"w":300,"h":250}}]}"#;
 pub(super) const NATIVE_REQUESTS: &[&str] = &[
     DEFAULT_NATIVE_REQUEST,
-    r#"{"native":{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":90}},{"id":2,"required":1,"data":{"type":2,"len":200}}]}}"#,
+    r#"{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":90}},{"id":2,"required":1,"data":{"type":2,"len":200}}]}"#,
 ];
 pub(super) const NATIVE_VERSIONS: &[&str] = &["1.2"];
 

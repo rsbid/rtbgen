@@ -12,8 +12,8 @@ use crate::money::Money;
 use crate::raw::RawJson;
 use crate::rng::{Entropy, Share, Span};
 use crate::wire::{
-    App, Banner, BannerList, Device, Geo, Imp, ImpList, Native, Publisher, Regs, RequestModel,
-    Site, User, Video,
+    App, Banner, BannerList, Currencies, Device, Geo, Imp, ImpList, Native, Publisher, Regs,
+    RequestModel, Site, User, Video, WireCurrency, WireId, WireNumber,
 };
 
 use super::Config;
@@ -21,8 +21,8 @@ use super::data::{
     APP_DEVICES, APP_EXT, APP_VERSIONS, APPS, AT, BADV, BANNER_API, BANNER_BATTR, BANNER_BTYPE,
     BANNER_EXPDIR, BANNER_MIMES, BANNER_POS, BANNER_TOPTRAME, BAPP, BCAT, COMPANION_TYPES,
     CONSENTS, CUR_USD, DEFAULT_APP, DEFAULT_APP_DEVICE, DEFAULT_CONSENT, DEFAULT_DEVICE,
-    DEFAULT_IDFA, DEFAULT_NATIVE_REQUEST, DEFAULT_SITE, DEFAULT_VIDEO_FORMAT, DEVICES,
-    DeviceProfile, FLOORS, GEOS, GPP, GPP_SID, IDFAS, IPS, LANGUAGES, NATIVE_EXT, NATIVE_REQUESTS,
+    DEFAULT_IFA, DEFAULT_NATIVE_REQUEST, DEFAULT_SITE, DEFAULT_VIDEO_FORMAT, DEVICES,
+    DeviceProfile, FLOORS, GEOS, GPP, GPP_SID, IFAS, IPS, LANGUAGES, NATIVE_EXT, NATIVE_REQUESTS,
     NATIVE_VERSIONS, PUBLISHER_CAT, PUBLISHER_NAMES, REGS_EXT, SITE_CAT, SITE_EXT, SITES, SIZES,
     TMAX, USER_EXT, VIDEO_DELIVERY, VIDEO_DURATIONS, VIDEO_FORMATS, VIDEO_PLACEMENTS, VIDEO_SIZES,
 };
@@ -130,7 +130,7 @@ fn build_device_from(
     rng: &mut impl Entropy,
     profiles: &[DeviceProfile],
     fallback: &DeviceProfile,
-    always_idfa: bool,
+    always_ifa: bool,
 ) -> Device {
     let geo = build_geo(rng);
     let (ua, make, model, os, osv, device_type) = choose(rng, profiles, *fallback);
@@ -139,8 +139,8 @@ fn build_device_from(
     device.set_ua(Some(ua));
     device.set_ip(Some(choose(rng, IPS, "203.0.113.7")));
     device.set_geo(Some(geo));
-    device.set_idfa(
-        (always_idfa || rng.bit(Share::percent(60))).then(|| choose(rng, IDFAS, DEFAULT_IDFA)),
+    device.set_ifa(
+        (always_ifa || rng.bit(Share::percent(60))).then(|| choose(rng, IFAS, DEFAULT_IFA)),
     );
     device.set_dnt(rng.bit(Share::percent(30)).then_some(Flag::No));
     device.set_lmt(rng.bit(Share::percent(30)).then_some(Flag::No));
@@ -186,14 +186,16 @@ pub(super) fn build_regs(rng: &mut impl Entropy) -> Option<Regs> {
     let mut regs = Regs::default();
     regs.set_coppa(Some(Flag::No));
     regs.set_gdpr(Some(Flag::Yes));
-    regs.set_gpp(rng.bit(Share::percent(40)).then_some(GPP));
-    regs.set_gpp_sid(if rng.bit(Share::percent(40)) { GPP_SID } else { &[] });
+    let gpp = rng.bit(Share::percent(40)).then_some(GPP);
+    let gpp_sid = rng.bit(Share::percent(40)) && gpp.is_some();
+    regs.set_gpp(gpp);
+    regs.set_gpp_sid(if gpp_sid { GPP_SID } else { &[] });
     regs.set_ext(rng.bit(Share::percent(20)).then_some(REGS_EXT));
     Some(regs)
 }
 
 fn build_banner(rng: &mut impl Entropy) -> Banner {
-    let (width, height) = choose(rng, SIZES, (300, 250));
+    let (width, height) = choose(rng, SIZES, (300_i32, 250_i32));
 
     let mut banner = Banner::default();
     banner.set_w(Some(width));
@@ -227,9 +229,10 @@ fn build_video(rng: &mut impl Entropy) -> Video {
     video.set_startdelay(Some(-1_i32));
     video.set_placement(Some(choose(rng, VIDEO_PLACEMENTS, Placement::IN_STREAM)));
     video.set_linearity(Some(Linearity::LINEAR));
-    video.set_skip(rng.bit(Share::percent(50)).then_some(Flag::Yes));
-    video.set_skipmin(Some(5));
-    video.set_skipafter(Some(5));
+    let skip = rng.bit(Share::percent(50)).then_some(Flag::Yes);
+    video.set_skip(skip);
+    video.set_skipmin(skip.map(|_| 5));
+    video.set_skipafter(skip.map(|_| 5));
     video.set_api(if rng.bit(Share::percent(50)) { BANNER_API } else { &[] });
     video.set_battr(if rng.bit(Share::percent(30)) { BANNER_BATTR } else { &[] });
     video.set_delivery(VIDEO_DELIVERY);
@@ -255,7 +258,7 @@ fn build_native(rng: &mut impl Entropy) -> Native {
 
 fn build_imp(rng: &mut impl Entropy, media: Media, id: u32) -> Imp {
     let mut imp = Imp::default();
-    imp.set_id(ImpId::new(id));
+    imp.set_id(WireId::id(ImpId::new(id)));
 
     match media {
         Media::Banner => imp.set_banner(Some(build_banner(rng))),
@@ -265,8 +268,8 @@ fn build_imp(rng: &mut impl Entropy, media: Media, id: u32) -> Imp {
 
     let floor =
         rng.bit(Share::percent(60)).then(|| Money::from_scaled(choose(rng, FLOORS, 10_000)));
-    imp.set_bidfloor(floor);
-    imp.set_bidfloorcur(floor.map(|_| Currency::USD));
+    imp.set_bidfloor(floor.map(WireNumber::number));
+    imp.set_bidfloorcur(floor.map(|_| WireCurrency::code(Currency::USD)));
     imp.set_secure(rng.bit(Share::percent(85)).then_some(Flag::Yes));
     imp
 }
@@ -381,14 +384,14 @@ fn build_site_tail(
     let ext = build_request_ext(rng);
 
     let mut request = RequestModel::default();
-    request.set_id(config.id());
+    request.set_id(WireId::id(config.id()));
     request.set_imp(*imps);
     request.set_site(Some(site));
     request.set_device(Some(device));
     request.set_user(user);
     request.set_at(Some(at));
     request.set_tmax(tmax);
-    request.set_cur(cur);
+    request.set_cur(Currencies::codes(cur));
     request.set_bcat(bcat);
     request.set_badv(badv);
     request.set_regs(regs);
@@ -422,14 +425,14 @@ pub(super) fn build_app_request(
     let ext = build_request_ext(rng);
 
     let mut request = RequestModel::default();
-    request.set_id(config.id());
+    request.set_id(WireId::id(config.id()));
     request.set_imp(imps);
     request.set_app(Some(app));
     request.set_device(Some(device));
     request.set_user(user);
     request.set_at(Some(at));
     request.set_tmax(tmax);
-    request.set_cur(cur);
+    request.set_cur(Currencies::codes(cur));
     request.set_bcat(bcat);
     request.set_badv(badv);
     request.set_bapp(bapp);
@@ -445,13 +448,19 @@ mod tests {
     use super::{Media, build_imp_list, build_mixed_imp_list, choose};
     use crate::rng::RngEntropy;
     use crate::seed::Seed;
+    use crate::wire::WireId;
 
     #[test]
     fn an_imp_list_has_consecutive_ids() {
         let mut rng = RngEntropy::from_seed(Seed::new(42));
         let imps = build_imp_list(&mut rng, Media::Banner, 3);
-        let ids: std::vec::Vec<u64> =
-            imps.iter().map(|imp| imp.id_for_tests().into_inner()).collect();
+        let ids: std::vec::Vec<u64> = imps
+            .iter()
+            .filter_map(|imp| match imp.id() {
+                WireId::Id(id) => Some(id.into_inner()),
+                WireId::Literal(_) => None,
+            })
+            .collect();
 
         assert_eq!(ids, [1, 2, 3]);
     }

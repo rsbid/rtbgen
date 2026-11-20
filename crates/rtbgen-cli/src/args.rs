@@ -3,7 +3,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use rtbgen::{Currency, Deals, Floor, ImpressionCount, Profile, Seed, SpecVersion};
+use rtbgen::{Currency, Deals, DegradeRate, Floor, ImpressionCount, Profile, Seed, SpecVersion};
 
 /// A fully parsed command.
 pub(crate) enum Command {
@@ -27,6 +27,7 @@ pub(crate) struct Generate {
     pub(crate) impressions: Option<ImpressionCount>,
     pub(crate) deals: Option<Deals>,
     pub(crate) floor: Option<Floor>,
+    pub(crate) degrade: Option<DegradeRate>,
     pub(crate) out: Option<PathBuf>,
 }
 
@@ -41,7 +42,7 @@ pub(crate) struct Corpus {
 }
 
 /// The default corpus directory, relative to the repository root.
-const DEFAULT_CORPUS_DIR: &str = "crates/rtbgen/corpus/v1";
+const DEFAULT_CORPUS_DIR: &str = "crates/rtbgen/corpus/v2";
 
 impl Command {
     /// Parses the process arguments, without the program name.
@@ -68,6 +69,7 @@ impl Default for Generate {
             impressions: None,
             deals: None,
             floor: None,
+            degrade: None,
             out: None,
         }
     }
@@ -140,6 +142,10 @@ impl<I: Iterator<Item = String>> Parser<I> {
                 self.currency = Currency::from_code(&value)
                     .map_err(|error| Error::invalid("--currency", value, &error))?;
             }
+            "--degrade" => {
+                let value = self.value("--degrade")?;
+                self.generate.degrade = Some(DegradeRate::percent(parse_degrade(&value)?));
+            }
             "--out" => {
                 self.generate.out = Some(PathBuf::from(self.value("--out")?));
             }
@@ -169,6 +175,23 @@ where
     T::Err: fmt::Display,
 {
     value.parse::<T>().map_err(|error| Error::invalid(flag, value.to_owned(), &error))
+}
+
+/// Parses `5` or `5%` as a degrade percentage.
+fn parse_degrade(value: &str) -> Result<u16, Error> {
+    let digits = value.strip_suffix('%').unwrap_or(value);
+    let percent: u16 =
+        digits.parse().map_err(|error| Error::invalid("--degrade", value.to_owned(), &error))?;
+
+    if percent > 100 {
+        return Err(Error::invalid(
+            "--degrade",
+            value.to_owned(),
+            &"a percentage between 0 and 100",
+        ));
+    }
+
+    Ok(percent)
 }
 
 fn parse_corpus(mut args: impl Iterator<Item = String>) -> Result<Command, Error> {
@@ -250,7 +273,7 @@ impl fmt::Display for Error {
 
 #[cfg(test)]
 mod tests {
-    use rtbgen::{Profile, SpecVersion};
+    use rtbgen::{DegradeRate, Profile, SpecVersion};
 
     use super::{Command, Error};
 
@@ -302,8 +325,30 @@ mod tests {
     }
 
     #[test]
+    fn the_degrade_rate_accepts_percent_and_a_bare_number() {
+        let rate = |command: Option<Command>| match command {
+            Some(Command::Generate(generate)) => generate.degrade.map(DegradeRate::basis_points),
+            _ => None,
+        };
+
+        assert_eq!(rate(parse_command(&["--degrade", "5%"]).ok()), Some(500));
+        assert_eq!(rate(parse_command(&["--degrade", "100"]).ok()), Some(10_000));
+        assert_eq!(rate(parse_command(&["--degrade", "0"]).ok()), Some(0));
+    }
+
+    #[test]
+    fn a_bad_degrade_rate_is_rejected() {
+        for value in ["101", "abc", "5%%", "-1", ""] {
+            assert!(
+                matches!(parse_command(&["--degrade", value]), Err(Error::InvalidValue { .. })),
+                "{value:?} was accepted"
+            );
+        }
+    }
+
+    #[test]
     fn unknown_flags_and_bad_values_are_errors() {
-        assert!(matches!(parse_command(&["--degrade", "5%"]), Err(Error::UnknownArgument(_))));
+        assert!(matches!(parse_command(&["--nonsense"]), Err(Error::UnknownArgument(_))));
         assert!(matches!(parse_command(&["--seed"]), Err(Error::MissingValue("--seed"))));
         assert!(matches!(
             parse_command(&["--profile", "AppRewarded"]),

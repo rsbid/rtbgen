@@ -24,6 +24,7 @@ OPTIONS:
     --deals <N>           add a private marketplace with N deals, clamped to 1..=8
     --floor <CPM>         bid floor of every impression
     --currency <CODE>     currency of --floor (default USD)
+    --degrade <PERCENT>   one spec violation in about PERCENT% of requests (0..=100)
     --out <DIR>           write request-NNNNNN.json files instead of stdout
     --list-profiles       print the profiles and their shapes
     -h, --help            print this help
@@ -58,6 +59,9 @@ fn build(generate: &Generate, seed: Seed) -> Request {
     }
     if let Some(floor) = generate.floor {
         builder = builder.floor(floor);
+    }
+    if let Some(degrade) = generate.degrade {
+        builder = builder.degrade(degrade);
     }
 
     builder.build()

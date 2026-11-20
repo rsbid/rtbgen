@@ -58,6 +58,23 @@ impl Site {
         option_raw(f, "ext", self.ext)
     }
 
+    /// Builds the smallest site that can be a second supply source.
+    pub(crate) const fn minimal() -> Self {
+        Self {
+            id: Some(SiteId::new(0)),
+            name: None,
+            domain: Some("site.example"),
+            cat: &[],
+            page: None,
+            ref_page: None,
+            mobile: None,
+            privacypolicy: None,
+            publisher: None,
+            keywords: None,
+            ext: None,
+        }
+    }
+
     pub(crate) const fn maximal() -> Self {
         Self {
             id: Some(SiteId::new(1)),
@@ -121,6 +138,22 @@ impl App {
         option_raw(f, "ext", self.ext)
     }
 
+    /// Builds the smallest app that can be a second supply source.
+    pub(crate) const fn minimal() -> Self {
+        Self {
+            id: Some(AppId::new(0)),
+            name: None,
+            bundle: Some("com.example.app"),
+            storeurl: None,
+            domain: None,
+            cat: &[],
+            ver: None,
+            publisher: None,
+            keywords: None,
+            ext: None,
+        }
+    }
+
     pub(crate) const fn maximal() -> Self {
         Self {
             id: Some(AppId::new(3)),
@@ -180,7 +213,7 @@ pub(crate) struct Device {
     ua: Option<&'static str>,
     ip: Option<&'static str>,
     geo: Option<Geo>,
-    idfa: Option<&'static str>,
+    ifa: Option<&'static str>,
     dnt: Option<Flag>,
     lmt: Option<Flag>,
     devicetype: Option<DeviceType>,
@@ -196,7 +229,7 @@ setters!(Device {
     set_ua => ua: Option<&'static str>,
     set_ip => ip: Option<&'static str>,
     set_geo => geo: Option<Geo>,
-    set_idfa => idfa: Option<&'static str>,
+    set_ifa => ifa: Option<&'static str>,
     set_dnt => dnt: Option<Flag>,
     set_lmt => lmt: Option<Flag>,
     set_devicetype => devicetype: Option<DeviceType>,
@@ -216,7 +249,7 @@ impl Device {
             object_field(f, "geo", |f| geo.write(f))?;
         }
 
-        option_string(f, "idfa", self.idfa)?;
+        option_string(f, "ifa", self.ifa)?;
         option_number(f, "dnt", self.dnt)?;
         option_number(f, "lmt", self.lmt)?;
         option_number(f, "devicetype", self.devicetype)?;
@@ -233,7 +266,7 @@ impl Device {
             ua: Some("Test Agent/1.0"),
             ip: Some("203.0.113.7"),
             geo: Some(Geo::maximal()),
-            idfa: Some("A1B2C3D4-0000-4000-8000-000000000001"),
+            ifa: Some("A1B2C3D4-0000-4000-8000-000000000001"),
             dnt: Some(Flag::No),
             lmt: Some(Flag::No),
             devicetype: Some(DeviceType::PERSONAL_COMPUTER),

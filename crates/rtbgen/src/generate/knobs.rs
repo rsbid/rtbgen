@@ -9,7 +9,7 @@ use crate::flag::Flag;
 use crate::ids::DealId;
 use crate::money::Money;
 use crate::rng::{Entropy, Share};
-use crate::wire::{Deal, DealList, Pmp, RequestModel};
+use crate::wire::{Deal, DealList, Pmp, RequestModel, WireCurrency, WireNumber};
 
 use super::Config;
 use super::data::{ADV_DOMAINS, DEAL_AT, DEAL_FLOORS, FLOORS};
@@ -61,8 +61,8 @@ pub(super) fn build_fixed_deals(count: u8) -> DealList {
 pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
     if let Some(floor) = config.floor() {
         for imp in model.impressions_mut().iter_mut() {
-            imp.set_bidfloor(Some(floor.money()));
-            imp.set_bidfloorcur(Some(floor.currency()));
+            imp.set_bidfloor(Some(WireNumber::number(floor.money())));
+            imp.set_bidfloorcur(Some(WireCurrency::code(floor.currency())));
         }
     }
 

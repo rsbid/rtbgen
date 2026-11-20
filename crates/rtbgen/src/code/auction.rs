@@ -17,6 +17,11 @@ impl AuctionType {
 
     /// `2`: second-price-plus auction, the wire default.
     pub(crate) const SECOND_PRICE_PLUS: Self = Self(2);
+
+    /// Wraps a raw code, including the values only `degrade` emits.
+    pub(crate) const fn from_raw(value: u16) -> Self {
+        Self(value)
+    }
 }
 
 impl fmt::Display for AuctionType {

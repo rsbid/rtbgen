@@ -4,7 +4,8 @@ use core::fmt;
 use alloc::string::String;
 
 use crate::builder::RequestBuilder;
-use crate::generate::{self, Config};
+use crate::degrade::{DegradeRate, Mutation};
+use crate::generate::{self, Config, Generated};
 use crate::profile::Profile;
 use crate::rng::Entropy;
 use crate::seed::Seed;
@@ -24,6 +25,7 @@ pub struct Request {
     seed: Option<Seed>,
     spec: SpecVersion,
     model: RequestModel,
+    mutation: Option<Mutation>,
 }
 
 impl Request {
@@ -33,13 +35,13 @@ impl Request {
         RequestBuilder::new(profile)
     }
 
-    pub(crate) const fn from_model(
+    pub(crate) const fn from_generated(
         profile: Profile,
         seed: Option<Seed>,
         spec: SpecVersion,
-        model: &RequestModel,
+        generated: &Generated,
     ) -> Self {
-        Self { profile, seed, spec, model: *model }
+        Self { profile, seed, spec, model: *generated.model(), mutation: generated.mutation() }
     }
 
     /// Generates a request from an entropy source.
@@ -53,10 +55,26 @@ impl Request {
     /// [`Entropy`](crate::Entropy) works.
     #[must_use]
     pub fn from_entropy(profile: Profile, spec: SpecVersion, entropy: &mut impl Entropy) -> Self {
-        let config = Config::from_entropy(entropy, None, None, None);
-        let model = generate::build_with(profile, &config, entropy);
+        Self::from_entropy_with(profile, spec, DegradeRate::OFF, entropy)
+    }
 
-        Self::from_model(profile, None, spec, &model)
+    /// Generates a request from an entropy source with a degrade rate.
+    ///
+    /// This is [`Request::from_entropy`] with one difference: the rate decides
+    /// whether the request carries a deliberate `OpenRTB` violation. The
+    /// mutation is drawn after the body, so a request without a mutation is
+    /// byte-identical to [`Request::from_entropy`] with the same entropy.
+    #[must_use]
+    pub fn from_entropy_with(
+        profile: Profile,
+        spec: SpecVersion,
+        degrade: DegradeRate,
+        entropy: &mut impl Entropy,
+    ) -> Self {
+        let config = Config::from_entropy(entropy, None, None, None).degrade(degrade).spec(spec);
+        let generated = generate::build_with(profile, &config, entropy);
+
+        Self::from_generated(profile, None, spec, &generated)
     }
 
     /// Returns the profile the request was generated from.
@@ -78,6 +96,15 @@ impl Request {
     #[must_use]
     pub const fn spec(&self) -> SpecVersion {
         self.spec
+    }
+
+    /// Returns the deliberate violation the request carries, if any.
+    ///
+    /// A request built without [`RequestBuilder::degrade`](crate::RequestBuilder::degrade)
+    /// or with [`DegradeRate::percent(0)`](DegradeRate::percent) never has one.
+    #[must_use]
+    pub const fn mutation(&self) -> Option<Mutation> {
+        self.mutation
     }
 
     /// Writes the request as compact JSON into `sink`.

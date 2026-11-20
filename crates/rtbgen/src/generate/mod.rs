@@ -19,12 +19,14 @@ mod site_video;
 mod sparse;
 
 use crate::deals::Deals;
+use crate::degrade::{self, DegradeRate, Mutation};
 use crate::floor::Floor;
 use crate::ids::RequestId;
 use crate::impressions::ImpressionCount;
 use crate::profile::Profile;
 use crate::rng::{Entropy, RngEntropy};
 use crate::seed::Seed;
+use crate::version::SpecVersion;
 use crate::wire::RequestModel;
 
 /// The resolved builder configuration.
@@ -34,6 +36,8 @@ pub(crate) struct Config {
     impressions: Option<ImpressionCount>,
     deals: Option<Deals>,
     floor: Option<Floor>,
+    degrade: DegradeRate,
+    spec: SpecVersion,
 }
 
 impl Config {
@@ -43,7 +47,19 @@ impl Config {
         deals: Option<Deals>,
         floor: Option<Floor>,
     ) -> Self {
-        Self { id, impressions, deals, floor }
+        Self { id, impressions, deals, floor, degrade: DegradeRate::OFF, spec: SpecVersion::V26 }
+    }
+
+    /// Sets the share of requests that carry one deliberate violation.
+    pub(crate) const fn degrade(mut self, degrade: DegradeRate) -> Self {
+        self.degrade = degrade;
+        self
+    }
+
+    /// Sets the revision the mutation selector is filtered by.
+    pub(crate) const fn spec(mut self, spec: SpecVersion) -> Self {
+        self.spec = spec;
+        self
     }
 
     /// Draws the request id, then builds the configuration.
@@ -75,10 +91,37 @@ impl Config {
     pub(crate) const fn floor(self) -> Option<Floor> {
         self.floor
     }
+
+    pub(crate) const fn degrade_rate(self) -> DegradeRate {
+        self.degrade
+    }
+
+    pub(crate) const fn spec_version(self) -> SpecVersion {
+        self.spec
+    }
+}
+
+/// A generated body and the mutation it carries, if any.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Generated {
+    model: RequestModel,
+    mutation: Option<Mutation>,
+}
+
+impl Generated {
+    /// Returns the wire model to write.
+    pub(crate) const fn model(&self) -> &RequestModel {
+        &self.model
+    }
+
+    /// Returns the mutation the request carries, if any.
+    pub(crate) const fn mutation(&self) -> Option<Mutation> {
+        self.mutation
+    }
 }
 
 /// Generates the request for a profile and a seed.
-pub(crate) fn build(profile: Profile, seed: Seed, config: &Config) -> RequestModel {
+pub(crate) fn build(profile: Profile, seed: Seed, config: &Config) -> Generated {
     let mut entropy = RngEntropy::from_seed(seed);
 
     build_with(profile, config, &mut entropy)
@@ -92,7 +135,7 @@ pub(crate) fn build_with(
     profile: Profile,
     config: &Config,
     entropy: &mut impl Entropy,
-) -> RequestModel {
+) -> Generated {
     let mut model = match profile {
         Profile::SiteDisplay => site_display::build(entropy, config),
         Profile::SiteVideo => site_video::build(entropy, config),
@@ -106,7 +149,11 @@ pub(crate) fn build_with(
     };
 
     knobs::apply_knobs(&mut model, config);
-    model
+
+    let mutation =
+        degrade::apply(&mut model, config.degrade_rate(), config.spec_version(), entropy);
+
+    Generated { model, mutation }
 }
 
 #[cfg(test)]
@@ -142,16 +189,16 @@ mod tests {
         let mut entropy = BytesEntropy::new(bytes);
         let config = Config::from_entropy(&mut entropy, None, None, None);
 
-        json(&build_with(profile, &config, &mut entropy))
+        json(build_with(profile, &config, &mut entropy).model())
     }
 
     #[test]
     fn every_profile_generates() {
         for profile in Profile::ALL {
-            let model = build(profile, Seed::new(42), &config(42));
+            let generated = build(profile, Seed::new(42), &config(42));
 
             assert!(
-                model.impressions().iter().next().is_some(),
+                generated.model().impressions().iter().next().is_some(),
                 "{profile} generated no impression"
             );
         }
@@ -164,7 +211,7 @@ mod tests {
             let mut entropy = RngEntropy::from_seed(Seed::new(42));
             let shared = build_with(profile, &config(42), &mut entropy);
 
-            assert_eq!(json(&seeded), json(&shared), "{profile} drifted between paths");
+            assert_eq!(json(seeded.model()), json(shared.model()), "{profile} drifted");
         }
     }
 

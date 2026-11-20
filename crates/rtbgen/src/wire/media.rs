@@ -19,8 +19,8 @@ use crate::write::{
 /// creative attributes the exchange refuses, not the ones it accepts.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Banner {
-    w: Option<u32>,
-    h: Option<u32>,
+    w: Option<i32>,
+    h: Option<i32>,
     btype: &'static [BlockedBannerType],
     battr: &'static [BlockedCreativeAttribute],
     pos: Option<PlacementPosition>,
@@ -34,8 +34,8 @@ pub(crate) struct Banner {
 }
 
 setters!(Banner {
-    set_w => w: Option<u32>,
-    set_h => h: Option<u32>,
+    set_w => w: Option<i32>,
+    set_h => h: Option<i32>,
     set_btype => btype: &'static [BlockedBannerType],
     set_battr => battr: &'static [BlockedCreativeAttribute],
     set_pos => pos: Option<PlacementPosition>,
@@ -298,7 +298,7 @@ impl Native {
 
     pub(crate) const fn maximal() -> Self {
         Self {
-            request: r#"{"native":{"ver":"1.2"}}"#,
+            request: r#"{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":80}}]}"#,
             ver: "1.2",
             api: &[ApiFramework::MRAID_2],
             battr: &[BlockedCreativeAttribute::AUDIO_AUTOPLAY],

@@ -1,20 +1,18 @@
 use core::fmt;
 
+use super::field::{Currencies, WireId};
 use super::{App, Device, ImpList, Regs, Site, Source, User};
 use crate::code::AuctionType;
 use crate::currency::Currency;
 use crate::ids::RequestId;
 use crate::raw::RawJson;
 use crate::version::SpecVersion;
-use crate::write::{
-    Object, field_id, object, object_field, option_currency_array, option_number, option_raw,
-    option_string_array,
-};
+use crate::write::{Object, object, object_field, option_number, option_raw, option_string_array};
 
 /// The top-level bid request.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct RequestModel {
-    id: RequestId,
+    id: WireId<RequestId>,
     imp: ImpList,
     site: Option<Site>,
     app: Option<App>,
@@ -22,7 +20,7 @@ pub(crate) struct RequestModel {
     user: Option<User>,
     at: Option<AuctionType>,
     tmax: Option<u32>,
-    cur: &'static [Currency],
+    cur: Currencies,
     bcat: &'static [&'static str],
     badv: &'static [&'static str],
     bapp: &'static [&'static str],
@@ -32,7 +30,7 @@ pub(crate) struct RequestModel {
 }
 
 setters!(RequestModel {
-    set_id => id: RequestId,
+    set_id => id: WireId<RequestId>,
     set_imp => imp: ImpList,
     set_site => site: Option<Site>,
     set_app => app: Option<App>,
@@ -40,7 +38,7 @@ setters!(RequestModel {
     set_user => user: Option<User>,
     set_at => at: Option<AuctionType>,
     set_tmax => tmax: Option<u32>,
-    set_cur => cur: &'static [Currency],
+    set_cur => cur: Currencies,
     set_bcat => bcat: &'static [&'static str],
     set_badv => badv: &'static [&'static str],
     set_bapp => bapp: &'static [&'static str],
@@ -57,12 +55,42 @@ impl RequestModel {
         &mut self.imp
     }
 
+    /// Returns the website, when the profile emitted one.
+    pub(crate) const fn site(&self) -> Option<&Site> {
+        self.site.as_ref()
+    }
+
+    /// Returns the application, when the profile emitted one.
+    pub(crate) const fn app(&self) -> Option<&App> {
+        self.app.as_ref()
+    }
+
+    /// Returns the device, when the profile emitted one.
+    pub(crate) const fn device(&self) -> Option<&Device> {
+        self.device.as_ref()
+    }
+
+    /// Returns the device for mutation, when the profile emitted one.
+    pub(crate) const fn device_mut(&mut self) -> Option<&mut Device> {
+        self.device.as_mut()
+    }
+
+    /// Returns the user, when the profile emitted one.
+    pub(crate) const fn user(&self) -> Option<&User> {
+        self.user.as_ref()
+    }
+
+    /// Returns the user for mutation, when the profile emitted one.
+    pub(crate) const fn user_mut(&mut self) -> Option<&mut User> {
+        self.user.as_mut()
+    }
+
     pub(crate) fn write<W: fmt::Write>(&self, out: &mut W, spec: SpecVersion) -> fmt::Result {
         object(out, |f| self.write_fields(f, spec))
     }
 
     fn write_fields<W: fmt::Write>(&self, f: &mut Object<'_, W>, spec: SpecVersion) -> fmt::Result {
-        field_id(f, "id", self.id)?;
+        self.id.write_field(f, "id")?;
 
         self.imp.write(f, spec)?;
 
@@ -81,7 +109,7 @@ impl RequestModel {
 
         option_number(f, "at", self.at)?;
         option_number(f, "tmax", self.tmax)?;
-        option_currency_array(f, "cur", self.cur)?;
+        self.cur.write_field(f, "cur")?;
         option_string_array(f, "bcat", self.bcat)?;
         option_string_array(f, "badv", self.badv)?;
         option_string_array(f, "bapp", self.bapp)?;
@@ -105,7 +133,7 @@ impl RequestModel {
         imps.push(&super::Imp::maximal());
 
         Self {
-            id,
+            id: WireId::id(id),
             imp: imps,
             site: Some(Site::maximal()),
             app: Some(App::maximal()),
@@ -113,7 +141,7 @@ impl RequestModel {
             user: Some(User::maximal()),
             at: Some(AuctionType::SECOND_PRICE_PLUS),
             tmax: Some(1_000),
-            cur: &[Currency::USD],
+            cur: Currencies::codes(&[Currency::USD]),
             bcat: &["IAB1"],
             badv: &["bad.example"],
             bapp: &["bad.app"],

@@ -1,4 +1,5 @@
 use crate::deals::Deals;
+use crate::degrade::DegradeRate;
 use crate::floor::Floor;
 use crate::generate::{self, Config};
 use crate::ids::RequestId;
@@ -27,6 +28,7 @@ pub struct RequestBuilder {
     impressions: Option<ImpressionCount>,
     deals: Option<Deals>,
     floor: Option<Floor>,
+    degrade: DegradeRate,
 }
 
 impl RequestBuilder {
@@ -38,6 +40,7 @@ impl RequestBuilder {
             impressions: None,
             deals: None,
             floor: None,
+            degrade: DegradeRate::OFF,
         }
     }
 
@@ -85,6 +88,18 @@ impl RequestBuilder {
         self
     }
 
+    /// Makes a share of requests carry one deliberate `OpenRTB` violation.
+    ///
+    /// The mutation is drawn after the profile body, so a request without a
+    /// mutation is byte-identical to the same request without the knob.
+    /// [`DegradeRate::percent`] with `0` is off; with `100` the request always
+    /// carries exactly one violation.
+    #[must_use]
+    pub const fn degrade(mut self, degrade: DegradeRate) -> Self {
+        self.degrade = degrade;
+        self
+    }
+
     /// Generates the request.
     ///
     /// The same builder configuration always produces byte-identical output for
@@ -92,10 +107,12 @@ impl RequestBuilder {
     #[must_use]
     pub fn build(self) -> Request {
         let config =
-            Config::new(RequestId::from_seed(self.seed), self.impressions, self.deals, self.floor);
-        let model = generate::build(self.profile, self.seed, &config);
+            Config::new(RequestId::from_seed(self.seed), self.impressions, self.deals, self.floor)
+                .degrade(self.degrade)
+                .spec(self.spec);
+        let generated = generate::build(self.profile, self.seed, &config);
 
-        Request::from_model(self.profile, Some(self.seed), self.spec, &model)
+        Request::from_generated(self.profile, Some(self.seed), self.spec, &generated)
     }
 }
 
