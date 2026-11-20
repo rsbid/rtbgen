@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install the MSRV toolchain
+        run: |
+          msrv=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          rustup toolchain install "$msrv" --profile minimal
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete,cargo-deny
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Every gate in the order CI runs them
+        run: bash ci/local-gates.sh

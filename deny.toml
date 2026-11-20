@@ -1,0 +1,27 @@
+# cargo-deny configuration; `ci/local-gates.sh` runs `cargo deny check`.
+#
+# The core has zero unconditional runtime dependencies. The optional adapters
+# and the dev-dependencies are the only crates in the graph, and they must stay
+# MIT/Apache-compatible so the crate can be published as `MIT OR Apache-2.0`.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+
+[licenses]
+version = 2
+allow = [
+  "MIT",
+  "Apache-2.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

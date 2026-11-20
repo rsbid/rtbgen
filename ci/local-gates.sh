@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # Every gate that CI runs, in the order CI runs them.
 #
+# Requires `cargo-machete` and `cargo-deny` (cargo install cargo-machete cargo-deny)
+# and the toolchain named by `rust-version` in Cargo.toml.
+#
 # Overrides:
-#   MSRV=1.88 ./ci/local-gates.sh    also checks the minimum supported Rust version
+#   MSRV=1.90 ./ci/local-gates.sh   use another toolchain for the MSRV check
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
+msrv="${MSRV:-$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)}"
+if [[ -z "$msrv" ]]; then
+  echo "no rust-version in Cargo.toml"
+  exit 1
+fi
 
 echo "== snippet"
 bash ci/check-snippet.sh
@@ -31,10 +40,12 @@ cargo test -p rtbgen --test corpus --no-default-features --features arbitrary --
 cargo test -p rtbgen --test corpus --no-default-features --features proptest --locked
 cargo test -p rtbgen --test corpus --no-default-features --features serde --locked
 
-if [[ -n "${MSRV:-}" ]]; then
-  echo "== msrv $MSRV"
-  cargo "+$MSRV" check --workspace --all-features --locked
-fi
+echo "== msrv $msrv"
+cargo "+$msrv" check --workspace --all-features --locked
+
+echo "== dependencies"
+cargo machete --with-metadata
+cargo deny check
 
 echo "== docs"
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
