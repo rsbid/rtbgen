@@ -33,6 +33,7 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 | Several impressions | `.impressions_exact(ImpressionCount::new(2))`: an exact count in 1..=3, over a profile's default |
 | A private marketplace | `.deals(Deals::new(3))`, on any profile |
 | A bid floor | `.floor(Floor::cpm(1.50, Currency::USD))` |
+| A GDPR or COPPA scenario | `.privacy(Privacy::Gdpr { consent: Consent::Granted })`, `.privacy(Privacy::Coppa)` |
 | A request that violates the spec | `.degrade(DegradeRate::percent(5))` |
 | An exact bug reproduction | keep the `Seed` in the test, not the JSON |
 | Profiles as data | `Profile::from_name("app_rewarded")` and `Profile::ALL` |
@@ -59,6 +60,25 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 `Maximal` alternates `site` and `app` with the seed: OpenRTB forbids both at once, so the seed
 chooses which supply source the request keeps. Every other field appears in either variant.
 
+## Privacy
+
+`regs`, `user.consent` and `regs.gpp` are not drawn independently: one `Privacy` scenario owns
+all of them, so the request cannot claim `gdpr=1` from the USA or send a GPP string that differs
+from `user.consent`. The seed draws a scenario (no regulation, GDPR granted/denied/without
+consent, GDPR disabled, or COPPA); `.privacy()` replaces it on any profile.
+
+- `Privacy::Gdpr { consent }` emits a real TCF v2.2 TC string (`TcfPolicyVersion=4`,
+  `IsServiceSpecific=1`, a terminated vendor section), the matching `regs.gpp` and `gpp_sid`,
+  and a location in the EU/UK.
+- `Privacy::Coppa` emits `coppa=1` with a US location, no `user`, no `device.ifa`, no
+  `device.ip` and no precise location.
+- `Privacy::GdprWithoutConsent` is `gdpr=1` with no TC string, the case a bidder must handle.
+- `Privacy::GdprDisabled` and `Privacy::None` use non-EU locations; the legacy
+  `regs.ext.us_privacy` string appears only for a US request.
+
+Locations carry their real UTC offset, region and UN/LOCODE, and the language follows the
+country.
+
 ## Malformed requests
 
 Parsers fail on real traffic, not only on valid fixtures. `.degrade(DegradeRate::percent(5))`
@@ -78,7 +98,7 @@ reproduce the same defect, and the document is always valid JSON.
 | 4..=10 and 10 000 impressions | impression cap and oversized body |
 | duplicate `imp[].id` | impression-id uniqueness |
 | `tmax` 120000, 0 or absent | deadline cap and "zero = no deadline" |
-| `user` without `consent`, or `consent` with a dot | presence rules and TCF |
+| `user` without `consent`, or `consent` with a dot | presence rules and TCF decoding |
 | negative or missing `banner.w`/`banner.h` | banner size |
 | deeply nested `ext` | raw-JSON handling |
 | `cur` as `"USD"` or `["US1"]` | list typing and currency validation |

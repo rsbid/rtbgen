@@ -39,7 +39,9 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 ## API map
 
 - `Request::builder(Profile)` — start here; `.seed()`, `.spec()`, `.impressions_exact()`,
-  `.deals()`, `.floor()`, `.degrade()`, `.build()`.
+  `.deals()`, `.floor()`, `.privacy()`, `.degrade()`, `.build()`.
+- `Privacy` / `Consent` — one scenario owns `regs`, the TCF v2.2 TC string, `regs.gpp` and
+  the request location; `Privacy::Coppa` also drops identifiers and precise geolocation.
 - `DegradeRate` / `Mutation` — one deliberate OpenRTB violation per request; see below.
 - `Request::mutation()` — the violation the request carries, if any.
 - `Request::write_json(&mut impl fmt::Write)` — no allocation, `no_std`.

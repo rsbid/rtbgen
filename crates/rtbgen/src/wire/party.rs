@@ -324,12 +324,12 @@ impl Geo {
 
     pub(crate) const fn maximal() -> Self {
         Self {
-            country: Some("RUS"),
-            region: Some("RU-MOW"),
-            city: Some("RUMOW"),
-            zip: Some("101000"),
+            country: Some("DEU"),
+            region: Some("DE-BE"),
+            city: Some("DEBER"),
+            zip: Some("10115"),
             type_code: Some(LocationType::IP_ADDRESS),
-            utcoffset: Some(-180),
+            utcoffset: Some(60),
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }
     }
@@ -376,7 +376,7 @@ impl User {
         Self {
             id: Some(UserId::new(4)),
             buyeruid: Some(BuyerUserId::new(5)),
-            consent: Some("CPX000"),
+            consent: Some(crate::privacy::TCF_CONSENT_GRANTED),
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }
     }

@@ -33,6 +33,7 @@ serde_json = { version = "1", default-features = false, features = ["alloc", "ra
 
 [dev-dependencies]
 arbitrary = "1.5"
+lib_tcstring = "0.5.0"
 proptest = { version = "1.12", default-features = false, features = ["std"] }
 serde_json = "1"
 

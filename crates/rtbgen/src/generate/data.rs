@@ -100,19 +100,92 @@ pub(super) const APP_DEVICES: &[DeviceProfile] = &[
 pub(super) const IPS: &[&str] = &["203.0.113.7", "198.51.100.23", "192.0.2.44"];
 pub(super) const DEFAULT_IFA: &str = "A1B2C3D4-0000-4000-8000-000000000001";
 pub(super) const IFAS: &[&str] = &[DEFAULT_IFA, "A1B2C3D4-0000-4000-8000-000000000002"];
-pub(super) const GEOS: &[(&str, &str, &str, &str)] = &[
-    ("RUS", "RU-MOW", "RUMOW", "101000"),
-    ("USA", "NY", "USNYC", "10001"),
-    ("DEU", "DE-BE", "DEBER", "10115"),
-    ("GBR", "GB-ENG", "GBLON", "EC1A"),
-];
-pub(super) const LANGUAGES: &[&str] = &["en", "ru", "de"];
-pub(super) const DEFAULT_CONSENT: &str =
-    "CPX0000000000000000000000000000000000000000000000000000000000000";
-pub(super) const CONSENTS: &[&str] =
-    &[DEFAULT_CONSENT, "CPX1111111111111111111111111111111111111111111111111111111111111"];
-pub(super) const GPP: &str =
-    "DBABMA~CPX0000000000000000000000000000000000000000000000000000000000000";
+
+/// One location a generated request can claim.
+#[derive(Clone, Copy, Debug)]
+pub(super) struct GeoProfile {
+    pub country: &'static str,
+    pub region: &'static str,
+    pub city: &'static str,
+    pub zip: &'static str,
+    pub utcoffset: i16,
+    pub language: &'static str,
+}
+
+const RUS: GeoProfile = GeoProfile {
+    country: "RUS",
+    region: "RU-MOW",
+    city: "RUMOW",
+    zip: "101000",
+    utcoffset: 180,
+    language: "ru",
+};
+const USA: GeoProfile = GeoProfile {
+    country: "USA",
+    region: "NY",
+    city: "USNYC",
+    zip: "10001",
+    utcoffset: -300,
+    language: "en",
+};
+const DEU: GeoProfile = GeoProfile {
+    country: "DEU",
+    region: "DE-BE",
+    city: "DEBER",
+    zip: "10115",
+    utcoffset: 60,
+    language: "de",
+};
+const GBR: GeoProfile = GeoProfile {
+    country: "GBR",
+    region: "GB-ENG",
+    city: "GBLON",
+    zip: "EC1A",
+    utcoffset: 0,
+    language: "en",
+};
+const FRA: GeoProfile = GeoProfile {
+    country: "FRA",
+    region: "FR-IDF",
+    city: "FRPAR",
+    zip: "75001",
+    utcoffset: 60,
+    language: "fr",
+};
+const ESP: GeoProfile = GeoProfile {
+    country: "ESP",
+    region: "ES-MD",
+    city: "ESMAD",
+    zip: "28001",
+    utcoffset: 60,
+    language: "es",
+};
+const ITA: GeoProfile = GeoProfile {
+    country: "ITA",
+    region: "IT-RM",
+    city: "ITROM",
+    zip: "00100",
+    utcoffset: 60,
+    language: "it",
+};
+const NLD: GeoProfile = GeoProfile {
+    country: "NLD",
+    region: "NL-NH",
+    city: "NLAMS",
+    zip: "1011",
+    utcoffset: 60,
+    language: "nl",
+};
+
+/// The locations of the requests where GDPR applies.
+pub(super) const EU_GEOS: &[GeoProfile] = &[DEU, GBR, FRA, ESP, ITA, NLD];
+/// The locations of the requests where GDPR does not apply.
+pub(super) const NON_EU_GEOS: &[GeoProfile] = &[RUS, USA];
+/// The location of a child-directed request: COPPA is US law.
+pub(super) const COPPA_GEOS: &[GeoProfile] = &[USA];
+/// The fallback when a location table is empty.
+pub(super) const DEFAULT_GEO: GeoProfile = RUS;
+
 pub(super) const GPP_SID: &[GppSectionId] = &[GppSectionId::TCF_EU_V2];
 
 pub(super) const BANNER_MIMES: &[&str] = &["image/jpeg", "image/png"];

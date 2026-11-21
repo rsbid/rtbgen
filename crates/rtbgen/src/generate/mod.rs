@@ -13,6 +13,7 @@ mod maximal;
 mod multi_imp;
 mod parts;
 mod pmp_deals;
+mod privacy;
 mod site_display;
 mod site_native;
 mod site_video;
@@ -23,6 +24,7 @@ use crate::degrade::{self, DegradeRate, Mutation};
 use crate::floor::Floor;
 use crate::ids::RequestId;
 use crate::impressions::ImpressionCount;
+use crate::privacy::Privacy;
 use crate::profile::Profile;
 use crate::rng::{Entropy, RngEntropy};
 use crate::seed::Seed;
@@ -36,6 +38,7 @@ pub(crate) struct Config {
     impressions: Option<ImpressionCount>,
     deals: Option<Deals>,
     floor: Option<Floor>,
+    privacy: Option<Privacy>,
     degrade: DegradeRate,
     spec: SpecVersion,
 }
@@ -47,7 +50,15 @@ impl Config {
         deals: Option<Deals>,
         floor: Option<Floor>,
     ) -> Self {
-        Self { id, impressions, deals, floor, degrade: DegradeRate::OFF, spec: SpecVersion::V26 }
+        Self {
+            id,
+            impressions,
+            deals,
+            floor,
+            privacy: None,
+            degrade: DegradeRate::OFF,
+            spec: SpecVersion::V26,
+        }
     }
 
     /// Sets the share of requests that carry one deliberate violation.
@@ -90,6 +101,17 @@ impl Config {
 
     pub(crate) const fn floor(self) -> Option<Floor> {
         self.floor
+    }
+
+    /// Returns the privacy scenario override, when the builder set one.
+    pub(crate) const fn privacy(self) -> Option<Privacy> {
+        self.privacy
+    }
+
+    /// Sets the privacy scenario override.
+    pub(crate) const fn privacy_override(mut self, privacy: Privacy) -> Self {
+        self.privacy = Some(privacy);
+        self
     }
 
     pub(crate) const fn degrade_rate(self) -> DegradeRate {

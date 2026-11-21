@@ -23,6 +23,7 @@
 //! | You want | Do this |
 //! |---|---|
 //! | A valid request for a test | [`Request::builder`] with the matching [`Profile`] |
+//! | A GDPR or COPPA request | add `.privacy(Privacy::Gdpr { consent: Consent::Granted })` |
 //! | A request that violates the spec | add `.degrade(DegradeRate::percent(5))` |
 //! | An `OpenRTB` 2.5 request | add `.spec(SpecVersion::V25)`; 2.6 is the default |
 //! | Extra impressions, a marketplace or a floor | [`ImpressionCount`], [`Deals`], [`Floor`] |
@@ -62,6 +63,15 @@
 //! `percent(0)` is byte-identical to not calling the knob; `percent(100)`
 //! always mutates. [`Mutation::ALL`] is the closed set and
 //! [`Request::mutation`] names the defect a request carries.
+//!
+//! ## Privacy
+//!
+//! `regs`, `user.consent`, `regs.gpp` and the request location are drawn as one
+//! [`Privacy`] scenario, so a request cannot claim `gdpr=1` from the USA or
+//! send a GPP string that differs from its TC string. `.privacy()` replaces the
+//! drawn scenario: [`Privacy::Gdpr`] emits a TCF v2.2 TC string,
+//! [`Privacy::Coppa`] drops identifiers and precise geolocation, and
+//! [`Privacy::GdprWithoutConsent`] is the no-consent case a bidder must handle.
 //!
 //! ## Features
 //!
@@ -121,6 +131,11 @@ mod impressions;
     reason = "the module is crate-private; `pub` would trip `unreachable_pub`"
 )]
 mod money;
+#[expect(
+    clippy::redundant_pub_crate,
+    reason = "the module is crate-private; `pub` would trip `unreachable_pub`"
+)]
+mod privacy;
 mod profile;
 #[cfg(feature = "proptest")]
 pub mod proptest;
@@ -152,6 +167,7 @@ pub use deals::Deals;
 pub use degrade::{DegradeRate, Mutation};
 pub use floor::Floor;
 pub use impressions::ImpressionCount;
+pub use privacy::{Consent, Privacy};
 pub use profile::{Profile, UnknownProfile};
 pub use request::Request;
 pub use rng::{BytesEntropy, Entropy, RngEntropy, Share, Span};

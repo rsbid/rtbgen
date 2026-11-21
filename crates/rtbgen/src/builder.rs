@@ -4,6 +4,7 @@ use crate::floor::Floor;
 use crate::generate::{self, Config};
 use crate::ids::RequestId;
 use crate::impressions::ImpressionCount;
+use crate::privacy::Privacy;
 use crate::profile::Profile;
 use crate::request::Request;
 use crate::seed::Seed;
@@ -28,6 +29,7 @@ pub struct RequestBuilder {
     impressions: Option<ImpressionCount>,
     deals: Option<Deals>,
     floor: Option<Floor>,
+    privacy: Option<Privacy>,
     degrade: DegradeRate,
 }
 
@@ -40,6 +42,7 @@ impl RequestBuilder {
             impressions: None,
             deals: None,
             floor: None,
+            privacy: None,
             degrade: DegradeRate::OFF,
         }
     }
@@ -88,6 +91,18 @@ impl RequestBuilder {
         self
     }
 
+    /// Overrides the privacy scenario of every request.
+    ///
+    /// The scenario fixes `regs`, `user.consent`, `regs.gpp`, the location of
+    /// the device and whether identifiers may appear; see [`Privacy`]. The
+    /// override replaces the scenario the seed would have drawn, so it is the
+    /// way to ask for a specific regulation state.
+    #[must_use]
+    pub const fn privacy(mut self, privacy: Privacy) -> Self {
+        self.privacy = Some(privacy);
+        self
+    }
+
     /// Makes a share of requests carry one deliberate `OpenRTB` violation.
     ///
     /// The mutation is drawn after the profile body, so a request without a
@@ -106,10 +121,15 @@ impl RequestBuilder {
     /// the same `rtbgen` version.
     #[must_use]
     pub fn build(self) -> Request {
-        let config =
+        let mut config =
             Config::new(RequestId::from_seed(self.seed), self.impressions, self.deals, self.floor)
                 .degrade(self.degrade)
                 .spec(self.spec);
+
+        if let Some(privacy) = self.privacy {
+            config = config.privacy_override(privacy);
+        }
+
         let generated = generate::build(self.profile, self.seed, &config);
 
         Request::from_generated(self.profile, Some(self.seed), self.spec, &generated)
@@ -122,6 +142,7 @@ mod tests {
     use crate::deals::Deals;
     use crate::floor::Floor;
     use crate::impressions::ImpressionCount;
+    use crate::privacy::Privacy;
     use crate::profile::Profile;
     use crate::seed::Seed;
     use crate::version::SpecVersion;
@@ -142,12 +163,22 @@ mod tests {
             .spec(SpecVersion::V25)
             .impressions_exact(ImpressionCount::new(2))
             .deals(Deals::new(3))
-            .floor(Floor::cpm(1.5, crate::currency::Currency::USD));
+            .floor(Floor::cpm(1.5, crate::currency::Currency::USD))
+            .privacy(Privacy::GdprWithoutConsent);
 
         let request = builder.build();
 
         assert_eq!(request.seed(), Some(Seed::new(42)));
         assert_eq!(request.spec(), SpecVersion::V25);
         assert_eq!(request.profile(), Profile::AppRewarded);
+    }
+
+    #[test]
+    fn the_privacy_knob_reaches_the_request() {
+        let request = RequestBuilder::new(Profile::SiteDisplay).privacy(Privacy::Coppa).build();
+        let json = request.to_json_string();
+
+        assert!(json.contains("\"coppa\":1"), "the COPPA flag was not emitted");
+        assert!(!json.contains("\"user\""), "a child-directed request kept the user");
     }
 }

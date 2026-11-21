@@ -19,13 +19,14 @@ use crate::wire::{
 use super::Config;
 use super::data::{
     APP_DEVICES, APP_EXT, APP_VERSIONS, APPS, AT, BADV, BANNER_API, BANNER_BATTR, BANNER_BTYPE,
-    BANNER_EXPDIR, BANNER_MIMES, BANNER_POS, BANNER_TOPTRAME, BAPP, BCAT, COMPANION_TYPES,
-    CONSENTS, CUR_USD, DEFAULT_APP, DEFAULT_APP_DEVICE, DEFAULT_CONSENT, DEFAULT_DEVICE,
-    DEFAULT_IFA, DEFAULT_NATIVE_REQUEST, DEFAULT_SITE, DEFAULT_VIDEO_FORMAT, DEVICES,
-    DeviceProfile, FLOORS, GEOS, GPP, GPP_SID, IFAS, IPS, LANGUAGES, NATIVE_EXT, NATIVE_REQUESTS,
-    NATIVE_VERSIONS, PUBLISHER_CAT, PUBLISHER_NAMES, REGS_EXT, SITE_CAT, SITE_EXT, SITES, SIZES,
-    TMAX, USER_EXT, VIDEO_DELIVERY, VIDEO_DURATIONS, VIDEO_FORMATS, VIDEO_PLACEMENTS, VIDEO_SIZES,
+    BANNER_EXPDIR, BANNER_MIMES, BANNER_POS, BANNER_TOPTRAME, BAPP, BCAT, COMPANION_TYPES, CUR_USD,
+    DEFAULT_APP, DEFAULT_APP_DEVICE, DEFAULT_DEVICE, DEFAULT_GEO, DEFAULT_IFA,
+    DEFAULT_NATIVE_REQUEST, DEFAULT_SITE, DEFAULT_VIDEO_FORMAT, DEVICES, DeviceProfile, FLOORS,
+    GPP_SID, GeoProfile, IFAS, IPS, NATIVE_EXT, NATIVE_REQUESTS, NATIVE_VERSIONS, PUBLISHER_CAT,
+    PUBLISHER_NAMES, REGS_EXT, SITE_CAT, SITE_EXT, SITES, SIZES, TMAX, USER_EXT, VIDEO_DELIVERY,
+    VIDEO_DURATIONS, VIDEO_FORMATS, VIDEO_PLACEMENTS, VIDEO_SIZES,
 };
+use super::privacy::Scenario;
 
 /// The media object a profile puts into an impression.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,35 +114,50 @@ pub(super) fn build_app(rng: &mut impl Entropy) -> App {
     app
 }
 
-fn build_geo(rng: &mut impl Entropy) -> Geo {
-    let (country, region, city, zip) = choose(rng, GEOS, ("RUS", "RU-MOW", "RUMOW", "101000"));
-
+pub(super) fn build_geo(location: &GeoProfile, precise: bool) -> Geo {
     let mut geo = Geo::default();
-    geo.set_country(Some(country));
-    geo.set_region(Some(region));
-    geo.set_city(Some(city));
-    geo.set_zip(Some(zip));
-    geo.set_type_code(Some(LocationType::IP_ADDRESS));
-    geo.set_utcoffset(Some(180));
+    geo.set_country(Some(location.country));
+
+    if precise {
+        geo.set_region(Some(location.region));
+        geo.set_city(Some(location.city));
+        geo.set_zip(Some(location.zip));
+        geo.set_type_code(Some(LocationType::IP_ADDRESS));
+    }
+
+    geo.set_utcoffset(Some(location.utcoffset));
     geo
+}
+
+/// The parts of the device policy a scenario controls.
+#[derive(Clone, Copy, Debug)]
+struct DevicePolicy {
+    always_ifa: bool,
+    privacy: Scenario,
+    location: GeoProfile,
 }
 
 fn build_device_from(
     rng: &mut impl Entropy,
     profiles: &[DeviceProfile],
     fallback: &DeviceProfile,
-    always_ifa: bool,
+    policy: &DevicePolicy,
 ) -> Device {
-    let geo = build_geo(rng);
     let (ua, make, model, os, osv, device_type) = choose(rng, profiles, *fallback);
 
     let mut device = Device::default();
     device.set_ua(Some(ua));
-    device.set_ip(Some(choose(rng, IPS, "203.0.113.7")));
-    device.set_geo(Some(geo));
-    device.set_ifa(
-        (always_ifa || rng.bit(Share::percent(60))).then(|| choose(rng, IFAS, DEFAULT_IFA)),
-    );
+
+    if policy.privacy.allows_ip() {
+        device.set_ip(Some(choose(rng, IPS, "203.0.113.7")));
+    }
+
+    device.set_geo(Some(build_geo(&policy.location, policy.privacy.precise_geo())));
+
+    let has_ifa =
+        policy.privacy.allows_identifiers() && (policy.always_ifa || rng.bit(Share::percent(60)));
+    device.set_ifa(has_ifa.then(|| choose(rng, IFAS, DEFAULT_IFA)));
+
     device.set_dnt(rng.bit(Share::percent(30)).then_some(Flag::No));
     device.set_lmt(rng.bit(Share::percent(30)).then_some(Flag::No));
     device.set_devicetype(Some(device_type));
@@ -149,48 +165,79 @@ fn build_device_from(
     device.set_model(Some(model));
     device.set_os(Some(os));
     device.set_osv(Some(osv));
-    device.set_language(Some(choose(rng, LANGUAGES, "en")));
+
+    let language = if policy.privacy.allows_identifiers() && !rng.bit(Share::percent(30)) {
+        policy.location.language
+    } else {
+        "en"
+    };
+    device.set_language(Some(language));
+
     device
 }
 
 /// Builds a desktop or laptop device.
-pub(super) fn build_device(rng: &mut impl Entropy) -> Device {
-    build_device_from(rng, DEVICES, &DEFAULT_DEVICE, false)
+pub(super) fn build_device(
+    rng: &mut impl Entropy,
+    privacy: Scenario,
+    location: &GeoProfile,
+) -> Device {
+    let policy = DevicePolicy { always_ifa: false, privacy, location: *location };
+    build_device_from(rng, DEVICES, &DEFAULT_DEVICE, &policy)
 }
 
 /// Builds a phone device, the realistic `device` of an in-app request.
-pub(super) fn build_app_device(rng: &mut impl Entropy) -> Device {
-    build_device_from(rng, APP_DEVICES, &DEFAULT_APP_DEVICE, true)
+pub(super) fn build_app_device(
+    rng: &mut impl Entropy,
+    privacy: Scenario,
+    location: &GeoProfile,
+) -> Device {
+    let policy = DevicePolicy { always_ifa: true, privacy, location: *location };
+    build_device_from(rng, APP_DEVICES, &DEFAULT_APP_DEVICE, &policy)
 }
 
 /// Builds the user, or nothing for the requests that carry no user.
-pub(super) fn build_user(rng: &mut impl Entropy) -> Option<User> {
-    if !rng.bit(Share::percent(70)) {
+pub(super) fn build_user(rng: &mut impl Entropy, privacy: Scenario) -> Option<User> {
+    if !privacy.allows_identifiers() {
+        return None;
+    }
+
+    let has_consent = privacy.consent().is_some();
+    if !has_consent && !rng.bit(Share::percent(70)) {
         return None;
     }
 
     let mut user = User::default();
     user.set_id(Some(UserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
     user.set_buyeruid(Some(BuyerUserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
-    user.set_consent(rng.bit(Share::percent(60)).then(|| choose(rng, CONSENTS, DEFAULT_CONSENT)));
+    user.set_consent(privacy.consent());
     user.set_ext(rng.bit(Share::percent(30)).then_some(USER_EXT));
     Some(user)
 }
 
 /// Builds the privacy regulations, or nothing for the requests without them.
-pub(super) fn build_regs(rng: &mut impl Entropy) -> Option<Regs> {
-    if !rng.bit(Share::percent(50)) {
+pub(super) fn build_regs(privacy: Scenario, country: &str) -> Option<Regs> {
+    if !privacy.has_regs() {
         return None;
     }
 
     let mut regs = Regs::default();
-    regs.set_coppa(Some(Flag::No));
-    regs.set_gdpr(Some(Flag::Yes));
-    let gpp = rng.bit(Share::percent(40)).then_some(GPP);
-    let gpp_sid = rng.bit(Share::percent(40)) && gpp.is_some();
-    regs.set_gpp(gpp);
-    regs.set_gpp_sid(if gpp_sid { GPP_SID } else { &[] });
-    regs.set_ext(rng.bit(Share::percent(20)).then_some(REGS_EXT));
+    regs.set_coppa(Some(privacy.coppa()));
+
+    if let Some(gdpr) = privacy.gdpr() {
+        regs.set_gdpr(Some(gdpr));
+    }
+
+    if privacy.consent().is_some() {
+        let gpp = privacy.gpp();
+        regs.set_gpp(gpp);
+        regs.set_gpp_sid(if gpp.is_some() { GPP_SID } else { &[] });
+    }
+
+    if privacy.has_us_privacy(country) {
+        regs.set_ext(Some(REGS_EXT));
+    }
+
     Some(regs)
 }
 
@@ -373,9 +420,11 @@ fn build_site_tail(
 ) -> RequestModel {
     let (site_profile, publisher) = *choice;
     let site = build_site(rng, site_profile, publisher);
-    let device = build_device(rng);
-    let user = build_user(rng);
-    let regs = build_regs(rng);
+    let privacy = Scenario::draw(rng);
+    let location = choose(rng, privacy.geos(), DEFAULT_GEO);
+    let device = build_device(rng, privacy, &location);
+    let user = build_user(rng, privacy);
+    let regs = build_regs(privacy, location.country);
     let at = build_at(rng);
     let tmax = build_tmax(rng);
     let cur = build_cur(rng);
@@ -413,9 +462,11 @@ pub(super) fn build_app_request(
         }
     }
     let app = build_app(rng);
-    let device = build_app_device(rng);
-    let user = build_user(rng);
-    let regs = build_regs(rng);
+    let privacy = Scenario::draw(rng);
+    let location = choose(rng, privacy.geos(), DEFAULT_GEO);
+    let device = build_app_device(rng, privacy, &location);
+    let user = build_user(rng, privacy);
+    let regs = build_regs(privacy, location.country);
     let at = build_at(rng);
     let tmax = build_tmax(rng);
     let cur = build_cur(rng);
@@ -445,7 +496,8 @@ pub(super) fn build_app_request(
 mod tests {
     extern crate std;
 
-    use super::{GEOS, Media, build_imp_list, build_mixed_imp_list, choose};
+    use super::{GeoProfile, Media, build_imp_list, build_mixed_imp_list, choose};
+    use crate::generate::data::{COPPA_GEOS, EU_GEOS, NON_EU_GEOS};
     use crate::rng::RngEntropy;
     use crate::seed::Seed;
     use crate::wire::WireId;
@@ -482,45 +534,57 @@ mod tests {
     }
 
     #[test]
-    fn the_geo_table_follows_the_spec_code_lists() {
-        for &(country, region, city, _zip) in GEOS {
-            assert_eq!(country.len(), 3, "{country} is not an ISO-3166-1 alpha-3 code");
-            assert!(
-                country.bytes().all(|byte| byte.is_ascii_uppercase()),
-                "{country} is not an ISO-3166-1 alpha-3 code"
-            );
+    fn the_geo_tables_follow_the_spec_code_lists() {
+        let mut locations = std::vec::Vec::new();
+        locations.extend_from_slice(EU_GEOS);
+        locations.extend_from_slice(NON_EU_GEOS);
+        locations.extend_from_slice(COPPA_GEOS);
 
-            assert_eq!(city.len(), 5, "{city} is not a UN/LOCODE");
-            assert!(
-                city.bytes().skip(2).all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()),
-                "{city} is not a UN/LOCODE"
-            );
-
-            if country == "USA" {
-                // OpenRTB asks for the 2-letter state code for the USA, not the full ISO-3166-2 code.
-                assert_eq!(region.len(), 2, "{region} is not a 2-letter US state code");
-                assert!(
-                    region.bytes().all(|byte| byte.is_ascii_uppercase()),
-                    "{region} is not a 2-letter US state code"
-                );
-                assert_eq!(city.get(..2), Some("US"), "{city} is not a US UN/LOCODE");
-            } else {
-                let mut parts = region.split('-');
-                let prefix = parts.next();
-                let subdivision = parts.next();
-                assert!(parts.next().is_none(), "{region} has more than one hyphen");
-                assert_eq!(
-                    prefix,
-                    city.get(..2),
-                    "{region} and {city} disagree on the country prefix"
-                );
-                assert!(
-                    subdivision.is_some_and(|code| code
-                        .bytes()
-                        .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())),
-                    "{region} is not an ISO-3166-2 code"
-                );
-            }
+        for location in locations {
+            check_geo(location);
         }
+    }
+
+    fn check_geo(GeoProfile { country, region, city, zip, utcoffset, language }: GeoProfile) {
+        assert_eq!(country.len(), 3, "{country} is not an ISO-3166-1 alpha-3 code");
+        assert!(
+            country.bytes().all(|byte| byte.is_ascii_uppercase()),
+            "{country} is not an ISO-3166-1 alpha-3 code"
+        );
+
+        assert_eq!(city.len(), 5, "{city} is not a UN/LOCODE");
+        assert!(
+            city.bytes().skip(2).all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()),
+            "{city} is not a UN/LOCODE"
+        );
+
+        if country == "USA" {
+            // OpenRTB asks for the 2-letter state code for the USA, not the full ISO-3166-2 code.
+            assert_eq!(region.len(), 2, "{region} is not a 2-letter US state code");
+            assert!(
+                region.bytes().all(|byte| byte.is_ascii_uppercase()),
+                "{region} is not a 2-letter US state code"
+            );
+            assert_eq!(city.get(..2), Some("US"), "{city} is not a US UN/LOCODE");
+        } else {
+            let mut parts = region.split('-');
+            let prefix = parts.next();
+            let subdivision = parts.next();
+            assert!(parts.next().is_none(), "{region} has more than one hyphen");
+            assert_eq!(prefix, city.get(..2), "{region} and {city} disagree on the country prefix");
+            assert!(
+                subdivision.is_some_and(|code| code
+                    .bytes()
+                    .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())),
+                "{region} is not an ISO-3166-2 code"
+            );
+        }
+
+        assert!(!zip.is_empty(), "{country} has no postal code");
+        assert!(
+            language.len() == 2 && language.bytes().all(|byte| byte.is_ascii_lowercase()),
+            "{country} has an invalid language"
+        );
+        assert!((-720..=840).contains(&utcoffset), "{country} has an implausible UTC offset");
     }
 }

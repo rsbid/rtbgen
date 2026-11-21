@@ -330,7 +330,7 @@ impl Regs {
         Self {
             coppa: Some(Flag::No),
             gdpr: Some(Flag::Yes),
-            gpp: Some("DBABMA~CPX000"),
+            gpp: Some(crate::privacy::GPP_GRANTED),
             gpp_sid: &[GppSectionId::TCF_EU_V2],
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }

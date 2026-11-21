@@ -199,7 +199,7 @@ spec = "2.6"
 profile = "site_display"
 seed = 35
 degrade = 100
-mutation = "bid_floor_currency_unknown"
+mutation = "bid_floor_as_string"
 
 [[request]]
 name = "degrade-site-video-v25-5"
@@ -207,7 +207,7 @@ spec = "2.5"
 profile = "site_video"
 seed = 5
 degrade = 100
-mutation = "device_ipv6"
+mutation = "duplicate_imp_ids"
 
 [[request]]
 name = "degrade-sparse-v26-8"
@@ -216,3 +216,52 @@ profile = "sparse"
 seed = 8
 degrade = 100
 mutation = "banner_missing_size"
+
+[[request]]
+name = "privacy-coppa-v26-21"
+spec = "2.6"
+profile = "site_display"
+seed = 21
+privacy = "coppa"
+
+[[request]]
+name = "privacy-coppa-v25-25"
+spec = "2.5"
+profile = "app_banner"
+seed = 25
+privacy = "coppa"
+
+[[request]]
+name = "privacy-gdpr-granted-v26-22"
+spec = "2.6"
+profile = "site_display"
+seed = 22
+privacy = "gdpr_granted"
+
+[[request]]
+name = "privacy-gdpr-denied-v26-23"
+spec = "2.6"
+profile = "site_video"
+seed = 23
+privacy = "gdpr_denied"
+
+[[request]]
+name = "privacy-gdpr-no-consent-v26-0"
+spec = "2.6"
+profile = "app_rewarded"
+seed = 0
+privacy = "gdpr_no_consent"
+
+[[request]]
+name = "privacy-gdpr-disabled-v26-26"
+spec = "2.6"
+profile = "site_display"
+seed = 26
+privacy = "gdpr_disabled"
+
+[[request]]
+name = "privacy-none-v26-27"
+spec = "2.6"
+profile = "multi_imp"
+seed = 27
+privacy = "none"

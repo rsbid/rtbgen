@@ -76,10 +76,10 @@ fn maximal_party_is_complete() {
     assert_eq!(value.pointer("/site/publisher/id").and_then(Value::as_str), Some("pub-2"));
     assert_eq!(value.pointer("/site/ref").and_then(Value::as_str), Some("https://search.example/"));
     assert_eq!(value.pointer("/app/bundle").and_then(Value::as_str), Some("com.example.app"));
-    assert_eq!(value.pointer("/device/geo/country").and_then(Value::as_str), Some("RUS"));
-    assert_eq!(value.pointer("/device/geo/region").and_then(Value::as_str), Some("RU-MOW"));
-    assert_eq!(value.pointer("/device/geo/city").and_then(Value::as_str), Some("RUMOW"));
-    assert_eq!(value.pointer("/device/geo/utcoffset").and_then(Value::as_i64), Some(-180));
+    assert_eq!(value.pointer("/device/geo/country").and_then(Value::as_str), Some("DEU"));
+    assert_eq!(value.pointer("/device/geo/region").and_then(Value::as_str), Some("DE-BE"));
+    assert_eq!(value.pointer("/device/geo/city").and_then(Value::as_str), Some("DEBER"));
+    assert_eq!(value.pointer("/device/geo/utcoffset").and_then(Value::as_i64), Some(60));
     assert_eq!(value.pointer("/user/id").and_then(Value::as_str), Some("u4"));
     assert_eq!(value.pointer("/user/buyeruid").and_then(Value::as_str), Some("buyer-5"));
 }
@@ -88,7 +88,10 @@ fn maximal_party_is_complete() {
 fn maximal_context_is_complete() {
     let value = maximal_value();
 
-    assert_eq!(value.pointer("/user/consent").and_then(Value::as_str), Some("CPX000"));
+    assert_eq!(
+        value.pointer("/user/consent").and_then(Value::as_str),
+        Some(crate::privacy::TCF_CONSENT_GRANTED)
+    );
     assert_eq!(value.pointer("/source/pchain").and_then(Value::as_str), Some("XYZ01234:ABCD56789"));
     assert_eq!(value.pointer("/source/schain/nodes/0/hp").and_then(Value::as_u64), Some(1));
     assert!(

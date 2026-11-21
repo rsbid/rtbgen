@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use rtbgen::corpus::{self, CorpusEntry};
-use rtbgen::{DegradeRate, Mutation, Profile, Seed, SpecVersion};
+use rtbgen::{Consent, DegradeRate, Mutation, Privacy, Profile, Seed, SpecVersion};
 use serde_json::Value;
 
 #[test]
@@ -40,6 +40,13 @@ fn the_manifest_lists_every_entry_and_nothing_else() {
         assert_eq!(listed.knobs & 1 != 0, entry.impressions().is_some(), "{}", entry.name());
         assert_eq!(listed.knobs & 2 != 0, entry.deals().is_some(), "{}", entry.name());
         assert_eq!(listed.knobs & 4 != 0, entry.floor().is_some(), "{}", entry.name());
+        assert_eq!(listed.knobs & 8 != 0, entry.privacy().is_some(), "{}", entry.name());
+        assert_eq!(
+            listed.privacy.as_deref(),
+            entry.privacy().map(privacy_name),
+            "{}",
+            entry.name()
+        );
         let expected_degrade = listed.degrade.map_or(DegradeRate::OFF, DegradeRate::percent);
         assert_eq!(expected_degrade, entry.degrade(), "{}", entry.name());
 
@@ -77,13 +84,25 @@ fn path_of(entry: CorpusEntry) -> std::path::PathBuf {
     Path::new(corpus::DIR).join(std::format!("{}.json", entry.name()))
 }
 
+const fn privacy_name(privacy: Privacy) -> &'static str {
+    match privacy {
+        Privacy::None => "none",
+        Privacy::Coppa => "coppa",
+        Privacy::GdprDisabled => "gdpr_disabled",
+        Privacy::Gdpr { consent: Consent::Granted } => "gdpr_granted",
+        Privacy::Gdpr { consent: Consent::Denied } => "gdpr_denied",
+        Privacy::GdprWithoutConsent => "gdpr_no_consent",
+    }
+}
+
 struct Listed {
     name: String,
     spec: String,
     profile: String,
     seed: u64,
-    /// Bit set: 1 = impressions, 2 = deals, 4 = floor.
+    /// Bit set: 1 = impressions, 2 = deals, 4 = floor, 8 = privacy.
     knobs: u8,
+    privacy: Option<String>,
     degrade: Option<u16>,
     mutation: Option<String>,
 }
@@ -109,6 +128,7 @@ fn parse_manifest() -> Vec<Listed> {
                 profile: String::new(),
                 seed: 0,
                 knobs: 0,
+                privacy: None,
                 degrade: None,
                 mutation: None,
             });
@@ -129,6 +149,10 @@ fn parse_manifest() -> Vec<Listed> {
             "impressions" => entry.knobs |= 1,
             "deals" => entry.knobs |= 2,
             "floor_cpm" => entry.knobs |= 4,
+            "privacy" => {
+                entry.knobs |= 8;
+                entry.privacy = Some(value.to_owned());
+            }
             "degrade" => entry.degrade = Some(value.parse().expect("a degrade percentage")),
             "mutation" => entry.mutation = Some(value.to_owned()),
             _ => {}

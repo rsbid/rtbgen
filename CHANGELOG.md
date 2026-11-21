@@ -28,6 +28,11 @@ has been released yet, so there is no second corpus contract.
   prefix).
   `Mutation::ALL` lists the set and `Request::mutation()` names the defect a request carries.
 - `Request::from_entropy_with(profile, spec, rate, entropy)` for a custom deterministic source.
+- `Privacy` and `Consent`, and `RequestBuilder::privacy`: one scenario owns `regs`,
+  `user.consent`, `regs.gpp`, the request location and whether identifiers may appear.
+  `Privacy::Gdpr` emits a valid TCF v2.2 TC string (verified by a `lib_tcstring` dev-dependency),
+  `Privacy::Coppa` drops the user, `device.ifa`, `device.ip` and precise geolocation, and
+  `Privacy::GdprWithoutConsent` is the no-consent case a bidder must handle.
 - `--degrade <PERCENT>` in the CLI, accepting `5` and `5%`.
 - `examples/05_malformed_input.rs`.
 
@@ -43,11 +48,22 @@ has been released yet, so there is no second corpus contract.
   `SupplyChainNode`.
 - `source.schain` appears only under OpenRTB 2.6: the `SupplyChain` object does not exist in 2.5,
   so `Maximal` loses it under `V25` and keeps it under `V26`.
-- `device.geo.country` is an ISO-3166-1 alpha-3 code (`RUS`, `USA`, `DEU`, `GBR`), not alpha-2.
-- `device.geo.city` is a UN/LOCODE (`RUMOW`, `USNYC`, `DEBER`, `GBLON`), not a city name.
+- `device.geo.country` is an ISO-3166-1 alpha-3 code (`RUS`, `USA`, `DEU`, `GBR`, `FRA`, `ESP`,
+  `ITA`, `NLD`), not alpha-2.
+- `device.geo.city` is a UN/LOCODE (`RUMOW`, `USNYC`, `DEBER`, `GBLON`, `FRPAR`, `ESMAD`,
+  `ITROM`, `NLAMS`), not a city name.
 - `device.geo.region` uses ISO-3166-2, with the 2-letter state code for the USA as the spec
-  requires (`RU-MOW`, `NY`, `DE-BE`, `GB-ENG`).
+  requires (`RU-MOW`, `NY`, `DE-BE`, `GB-ENG`, `FR-IDF`, `ES-MD`, `IT-RM`, `NL-NH`).
 - `source.pchain` is a valid TAG Payment ID chain (`XYZ01234:ABCD56789`), not `pchain-1`.
+- Privacy is coherent instead of three independent draws. The TC strings are now valid TCF v2.2
+  (a `Created` equal to `LastUpdated`, `TcfPolicyVersion=4`, valid language and publisher
+  country, a terminated vendor section), `regs.gpp` always carries the same string as
+  `user.consent`, `gpp_sid` always accompanies `gpp`, and `coppa=1` never carries identifiers.
+  `gdpr=1` uses an EU/UK location, non-GDPR traffic uses another location, and the legacy
+  `us_privacy` string appears only for a US request. The location table gains `FRA`, `ESP`,
+  `ITA` and `NLD`, and every location carries its real UTC offset and language.
+- `device.geo.utcoffset` follows the location (`180` for Moscow, `-300` for New York, `0` for
+  London, `60` for the EU), instead of the constant `180` or the inconsistent `-180` fixture.
 - `degrade(100)` no longer selects a mutation the request cannot carry: `TmaxMissing` requires
   a `tmax` and `ConsentMissing` requires a `consent`. Requests without those fields can select
   a different mutation than before; non-degraded bytes are unchanged.

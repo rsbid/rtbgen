@@ -9,11 +9,13 @@ use crate::flag::Flag;
 use crate::ids::DealId;
 use crate::money::Money;
 use crate::rng::{Entropy, Share};
-use crate::wire::{Deal, DealList, Pmp, RequestModel, WireCurrency, WireNumber};
+use crate::version::SpecVersion;
+use crate::wire::{Deal, DealList, Pmp, RequestModel, User, WireCurrency, WireNumber};
 
 use super::Config;
-use super::data::{ADV_DOMAINS, DEAL_AT, DEAL_FLOORS, FLOORS};
-use super::parts::choose;
+use super::data::{ADV_DOMAINS, DEAL_AT, DEAL_FLOORS, DEFAULT_GEO, DEFAULT_IFA, FLOORS, IPS};
+use super::parts::{build_geo, build_regs, choose};
+use super::privacy::Scenario;
 
 /// Builds the deals of a profile from the seed.
 pub(super) fn build_deals(rng: &mut impl Entropy, count: u8) -> DealList {
@@ -59,6 +61,10 @@ pub(super) fn build_fixed_deals(count: u8) -> DealList {
 
 /// Applies the widening knobs to a generated model.
 pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
+    if let Some(privacy) = config.privacy() {
+        apply_privacy(model, Scenario::from_privacy(privacy), config.spec_version());
+    }
+
     if let Some(floor) = config.floor() {
         for imp in model.impressions_mut().iter_mut() {
             imp.set_bidfloor(Some(WireNumber::number(floor.money())));
@@ -72,6 +78,49 @@ pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
             imp.set_pmp(Some(Pmp::new(Flag::Yes, &list)));
         }
     }
+}
+
+/// Replaces the drawn privacy scenario with the builder's override.
+///
+/// The override is deterministic: the location is the first location of the
+/// scenario's scope, so the knob does not depend on the location the seed drew.
+fn apply_privacy(model: &mut RequestModel, privacy: Scenario, spec: SpecVersion) {
+    let location = privacy.geos().first().copied().unwrap_or(DEFAULT_GEO);
+
+    if let Some(device) = model.device_mut() {
+        device.set_geo(Some(build_geo(&location, privacy.precise_geo())));
+        device.set_language(Some(if privacy.allows_identifiers() {
+            location.language
+        } else {
+            "en"
+        }));
+
+        let ip = if privacy.allows_ip() { IPS.first().copied() } else { None };
+        device.set_ip(ip);
+        device.set_ifa(privacy.allows_identifiers().then_some(DEFAULT_IFA));
+    }
+
+    match privacy {
+        Scenario::Coppa => model.set_user(None),
+        Scenario::Gdpr { .. } => {
+            if let Some(user) = model.user_mut() {
+                user.set_consent(privacy.consent());
+            } else if spec.is_v26() {
+                let mut user = User::default();
+                user.set_consent(privacy.consent());
+                model.set_user(Some(user));
+            } else {
+                // 2.5 has no `user.consent` field, so there is nothing to add.
+            }
+        }
+        Scenario::None | Scenario::GdprDisabled | Scenario::GdprNoConsent => {
+            if let Some(user) = model.user_mut() {
+                user.set_consent(None);
+            }
+        }
+    }
+
+    model.set_regs(build_regs(privacy, location.country));
 }
 
 #[cfg(test)]

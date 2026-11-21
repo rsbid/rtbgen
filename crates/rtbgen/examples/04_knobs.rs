@@ -2,7 +2,7 @@
 
 use std::process::ExitCode;
 
-use rtbgen::{Currency, Deals, Floor, Profile, Request, Seed, SpecVersion};
+use rtbgen::{Consent, Currency, Deals, Floor, Privacy, Profile, Request, Seed, SpecVersion};
 
 fn main() -> ExitCode {
     let json = Request::builder(Profile::PmpDeals)
@@ -10,6 +10,7 @@ fn main() -> ExitCode {
         .spec(SpecVersion::V25)
         .deals(Deals::new(4))
         .floor(Floor::cpm(2.0, Currency::EUR))
+        .privacy(Privacy::Gdpr { consent: Consent::Granted })
         .build()
         .to_json_string();
     let Ok(value) = serde_json::from_str::<serde_json::Value>(&json) else {
@@ -26,6 +27,11 @@ fn main() -> ExitCode {
     assert!(
         value.pointer("/regs/gdpr").is_none(),
         "a 2.5 request must not carry the 2.6 gdpr field"
+    );
+    assert_eq!(
+        value.pointer("/device/geo/country").and_then(serde_json::Value::as_str),
+        Some("DEU"),
+        "the privacy knob did not move the request to the GDPR location"
     );
 
     ExitCode::SUCCESS
