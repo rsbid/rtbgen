@@ -122,7 +122,7 @@ carries. A mutation never breaks JSON: it breaks OpenRTB.
 
 ## Parser check
 
-The mutation table was measured, not guessed. On 2026-11-21, `rtbgen` 0.3.0 generated 180
+The mutation table was measured, not guessed. On 2026-11-21, `rtbgen` 0.1.0 generated 180
 requests (nine profiles, both revisions, ten seeds each) and one accepted baseline per mutation
 and implementation, searched over seeds 0..=499. Each implementation below parsed every request;
 a mutation counts as detected only when its baseline was **accepted** before the mutation and
@@ -155,7 +155,7 @@ Read the table as a map of the layer each tool checks:
   `iab-specs-openrtb` 0.5.1 reads nested `ext` and `pmp` as `Vec<u8>`, so map-valued extensions
   fail there regardless of validity.
 
-This matrix is why 0.3.0 emits `device.ifa` (not `idfa`), a native request at the root,
+This matrix is why 0.1.0 emits `device.ifa` (not `idfa`), a native request at the root,
 `skipmin`/`skipafter`/`gpp_sid` only with their parent field, and `source.schain` only under 2.6.
 The same release follows Supply Chain 1.1 (`ver: "1.1"`, `complete: 2`) under 2.6.
 
