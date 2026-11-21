@@ -95,6 +95,16 @@ fn maximal_context_is_complete() {
         Some(crate::privacy::TCF_CONSENT_GRANTED)
     );
     assert_eq!(value.pointer("/source/pchain").and_then(Value::as_str), Some("XYZ01234:ABCD56789"));
+    assert_eq!(
+        value.pointer("/source/schain/ver").and_then(Value::as_str),
+        Some("1.1"),
+        "Supply Chain 1.1 is the current revision"
+    );
+    assert_eq!(
+        value.pointer("/source/schain/complete").and_then(Value::as_u64),
+        Some(2),
+        "a fully known chain is payment and non-payment complete"
+    );
     assert_eq!(value.pointer("/source/schain/nodes/0/hp").and_then(Value::as_u64), Some(1));
     assert!(
         value.pointer("/source/schain/nodes/0/n").is_none(),

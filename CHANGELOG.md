@@ -60,6 +60,9 @@ is no second corpus contract.
   `SupplyChainNode`.
 - `source.schain` appears only under OpenRTB 2.6: the `SupplyChain` object does not exist in 2.5,
   so `Maximal` loses it under `V25` and keeps it under `V26`.
+- `source.schain` follows Supply Chain 1.1 as of OpenRTB 2.6-202611: `ver` is `"1.1"`, and the
+  one-node maximal chain declares `complete: 2` (payment and non-payment complete). `complete`
+  is no longer a two-valued flag, so every `Maximal` request under OpenRTB 2.6 changes bytes.
 - `device.geo.country` is an ISO-3166-1 alpha-3 code (`RUS`, `USA`, `DEU`, `GBR`, `FRA`, `ESP`,
   `ITA`, `NLD`), not alpha-2.
 - `device.geo.city` is a UN/LOCODE (`RUMOW`, `USNYC`, `DEBER`, `GBLON`, `FRPAR`, `ESMAD`,

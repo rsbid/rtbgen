@@ -8,7 +8,7 @@ use super::{
     ApiFramework, AuctionType, BlockedBannerType, BlockedCreativeAttribute, CompanionType,
     DealAuctionType, DeliveryMethod, DeviceType, ExpandableDirection, FeedType, FinalDecision,
     GppSectionId, Linearity, LocationType, Placement, PlacementPosition, Protocol, SsaiMode,
-    VcmMode, VolumeNormalization,
+    SupplyChainComplete, VcmMode, VolumeNormalization,
 };
 
 #[test]
@@ -60,6 +60,7 @@ fn context_and_target_codes_display_their_wire_value() {
     assert_eq!(SsaiMode::SERVER_SIDE.to_string(), "3");
     assert_eq!(FinalDecision::UPSTREAM.to_string(), "1");
     assert_eq!(GppSectionId::TCF_EU_V2.to_string(), "2");
+    assert_eq!(SupplyChainComplete::PAYMENT_AND_NON_PAYMENT_COMPLETE.to_string(), "2");
     assert_eq!(DeviceType::PERSONAL_COMPUTER.to_string(), "2");
     assert_eq!(DeviceType::PHONE.to_string(), "4");
     assert_eq!(LocationType::IP_ADDRESS.to_string(), "2");

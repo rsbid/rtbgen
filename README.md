@@ -130,7 +130,7 @@ a mutation counts as detected only when its baseline was **accepted** before the
 
 | Implementation | Version | Valid requests accepted | Defects detected |
 |---|---|---|---|
-| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 180/180 | 7/28 |
+| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 170/180 | 7/28 |
 | [`openrtb26`](https://crates.io/crates/openrtb26) | 0.1.1 | 180/180 | 2/28 |
 | [`iab-specs-openrtb`](https://crates.io/crates/iab-specs-openrtb) | 0.5.1 | 132/180 | 2/28 |
 | [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 4/26 |
@@ -145,8 +145,11 @@ Read the table as a map of the layer each tool checks:
 - The serde parsers catch a wrong JSON type (`"1.50"` as money, `"USD"` instead of `["USD"]`)
   and little else. `openrtb26` accepts every request; `iab-specs-openrtb` adds two type checks;
   `openrtb` also rejects a missing `tmax` and a negative banner size.
-- `rtblint-core` accepts all 180 valid requests; the gaps in its detection column are the
-  semantic checks listed above, not missing fields.
+- `rtblint-core` rejects 10 of the 180 valid requests only because version 0.14.8 knows OpenRTB
+  2.6-202606: the 10 `maximal` 2.6 requests use Supply Chain 1.1 from 2.6-202611 (`complete: 2`,
+  `ver: "1.1"`), so it rejects the new `complete` value and warns about the version. The gap is
+  the parser's catalog, not the document. The gaps in its detection column are the semantic
+  checks listed above, not missing fields.
 - `openrtb` 0.2.1 rejects 170 of the 180 valid requests because its `User.data` has no serde
   default; its detection column covers the 26 mutations whose baseline it could parse.
   `iab-specs-openrtb` 0.5.1 reads nested `ext` and `pmp` as `Vec<u8>`, so map-valued extensions
@@ -154,6 +157,7 @@ Read the table as a map of the layer each tool checks:
 
 This matrix is why 0.3.0 emits `device.ifa` (not `idfa`), a native request at the root,
 `skipmin`/`skipafter`/`gpp_sid` only with their parent field, and `source.schain` only under 2.6.
+The same release follows Supply Chain 1.1 (`ver: "1.1"`, `complete: 2`) under 2.6.
 
 ## Determinism
 
@@ -250,7 +254,8 @@ rtbgen corpus --verify
 The 0.3 release adds the `degrade` knob and its mutation table, and fixes the fields the parser
 matrix and the OpenRTB 2.6 audit caught: `device.ifa` (not the non-spec `idfa`), the Native
 Markup Request root, `skipmin`/`skipafter` only with `skip`, `gpp_sid` only with `gpp`, no
-`source.schain.nodes[].n`, `source.schain` only under 2.6, and standard code lists for
+`source.schain.nodes[].n`, `source.schain` only under 2.6, Supply Chain 1.1
+(`ver: "1.1"`, `complete: 2`) under 2.6, and standard code lists for
 `device.geo.country` (ISO-3166-1 alpha-3), `device.geo.region` (ISO-3166-2, 2-letter state code
 for the USA), `device.geo.city` (UN/LOCODE) and `source.pchain` (TAG Payment ID). Existing
 snapshots must be regenerated; `corpus/v1` is regenerated in place because no

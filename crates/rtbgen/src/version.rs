@@ -4,7 +4,8 @@ use core::fmt;
 ///
 /// The 2.x revisions share one wire model: 2.5 is the 2.6 model without the
 /// fields the 2.6 revision introduced, so a profile keeps its shape under both
-/// and only loses the newer fields.
+/// and only loses the newer fields. The 2.6 model tracks the 2.6-202611
+/// revision, which carries Supply Chain 1.1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SpecVersion {
     /// `OpenRTB` 2.5.

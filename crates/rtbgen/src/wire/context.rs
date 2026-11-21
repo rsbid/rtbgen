@@ -2,7 +2,7 @@ use core::fmt;
 
 use super::MAX_DEALS;
 use super::MAX_NODES;
-use crate::code::{DealAuctionType, FinalDecision, GppSectionId};
+use crate::code::{DealAuctionType, FinalDecision, GppSectionId, SupplyChainComplete};
 use crate::currency::Currency;
 use crate::flag::Flag;
 use crate::ids::DealId;
@@ -190,8 +190,8 @@ impl Source {
             tid: Some("tid-1"),
             pchain: Some("XYZ01234:ABCD56789"),
             schain: Some(SupplyChain {
-                ver: "1.0",
-                complete: Flag::Yes,
+                ver: "1.1",
+                complete: SupplyChainComplete::PAYMENT_AND_NON_PAYMENT_COMPLETE,
                 nodes,
                 ext: Some(RawJson::from_static(r#"{"k":1}"#)),
             }),
@@ -204,7 +204,7 @@ impl Source {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SupplyChain {
     ver: &'static str,
-    complete: Flag,
+    complete: SupplyChainComplete,
     nodes: NodeList,
     ext: Option<RawJson>,
 }

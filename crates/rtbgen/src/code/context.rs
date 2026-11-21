@@ -36,6 +36,27 @@ impl fmt::Display for FinalDecision {
     }
 }
 
+/// How complete the supply chain is: `SupplyChain.complete` under Supply Chain
+/// 1.1.
+///
+/// The wire value has three states: `0` not complete, `1` payment complete,
+/// and `2` payment and non-payment complete. The type keeps the numeric id and
+/// names only the value this crate emits.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct SupplyChainComplete(u16);
+
+impl SupplyChainComplete {
+    /// Every payment and non-payment node is present; used by the maximal
+    /// fixture.
+    pub(crate) const PAYMENT_AND_NON_PAYMENT_COMPLETE: Self = Self(2);
+}
+
+impl fmt::Display for SupplyChainComplete {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// One `GPP` section id: an element of `Regs.gpp_sid`.
 ///
 /// Section ids are assigned by the `GPP` specification and grow over time, so
