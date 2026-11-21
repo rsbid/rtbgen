@@ -3,10 +3,13 @@
 //! A knob never consumes the seed and never changes a request when it is not
 //! set, so the default bytes of a profile are independent of the knob API. A
 //! knob either widens the model (deals), overrides a value (floor) or replaces
-//! the privacy scenario.
+//! the privacy scenario. The deprecated-field policy is applied in the same
+//! place: it moves a drawn legacy value to the revision's replacement and
+//! drops the legacy field unless the caller asked for it.
 
-use crate::code::DealAuctionType;
+use crate::code::{DealAuctionType, Plcmt};
 use crate::currency::Currency;
+use crate::deprecated::DeprecatedFields;
 use crate::flag::Flag;
 use crate::ids::DealId;
 use crate::money::Money;
@@ -77,6 +80,29 @@ pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
         let list = build_fixed_deals(deals.count());
         for imp in model.impressions_mut().iter_mut() {
             imp.set_pmp(Some(Pmp::new(Flag::Yes, &list)));
+        }
+    }
+}
+
+/// Rewrites the deprecated fields of the model for the target revision.
+///
+/// `OpenRTB` 2.6 replaced `imp.video.placement` with `imp.video.plcmt`. The
+/// legacy value is still drawn once, so the replacement is a deterministic
+/// function of the same draw and the knob does not move the entropy stream.
+/// The deprecated field is dropped unless the caller asked to include it; 2.5
+/// is untouched, so its bytes do not depend on the policy.
+pub(super) fn apply_deprecated_fields(model: &mut RequestModel, config: &Config) {
+    if !config.spec_version().is_v26() {
+        return;
+    }
+
+    for imp in model.impressions_mut().iter_mut() {
+        let Some(video) = imp.video_mut() else { continue };
+        let Some(placement) = video.placement() else { continue };
+
+        video.set_plcmt(Some(Plcmt::from_placement(placement)));
+        if config.deprecated_fields() == DeprecatedFields::Omit {
+            video.set_placement(None);
         }
     }
 }

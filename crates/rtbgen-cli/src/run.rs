@@ -27,6 +27,7 @@ OPTIONS:
     --privacy <NAME>      privacy scenario: none, coppa, gdpr_granted, gdpr_denied,
                           gdpr_no_consent, gdpr_disabled
     --degrade <PERCENT>   one spec violation in about PERCENT% of requests (0..=100)
+    --include-deprecated  also emit fields the target revision deprecated (off by default)
     --out <DIR>           write request-NNNNNN.json files instead of stdout
     --list-profiles       print the profiles and their shapes
     -h, --help            print this help
@@ -51,7 +52,10 @@ fn write_stdout(text: &str) -> Result<(), Error> {
 }
 
 fn build(generate: &Generate, seed: Seed) -> Request {
-    let mut builder = Request::builder(generate.profile).seed(seed).spec(generate.spec);
+    let mut builder = Request::builder(generate.profile)
+        .seed(seed)
+        .spec(generate.spec)
+        .deprecated_fields(generate.deprecated);
 
     if let Some(count) = generate.impressions {
         builder = builder.impressions_exact(count);
@@ -174,7 +178,7 @@ fn verify_corpus(directory: &Path) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use rtbgen::{Privacy, Seed};
+    use rtbgen::{DeprecatedFields, Privacy, Profile, Seed};
 
     use super::build;
     use crate::args::Generate;
@@ -186,5 +190,23 @@ mod tests {
 
         assert!(json.contains("\"coppa\":1"), "the COPPA flag was not emitted");
         assert!(!json.contains("\"user\""), "a child-directed request kept the user");
+    }
+
+    #[test]
+    fn the_help_lists_the_deprecated_fields_flag() {
+        assert!(super::HELP.contains("--include-deprecated"), "the flag is undocumented");
+    }
+
+    #[test]
+    fn the_deprecated_fields_flag_reaches_the_cli_request() {
+        let generate = Generate {
+            profile: Profile::SiteVideo,
+            deprecated: DeprecatedFields::Include,
+            ..Generate::default()
+        };
+        let json = build(&generate, Seed::new(7)).to_json_string();
+
+        assert!(json.contains("\"placement\":"), "the flag did not add the deprecated field");
+        assert!(json.contains("\"plcmt\":"), "the replacement is missing");
     }
 }

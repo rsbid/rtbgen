@@ -3,12 +3,13 @@ use core::fmt;
 use super::MAX_COMPANIONS;
 use crate::code::{
     ApiFramework, BlockedBannerType, BlockedCreativeAttribute, CompanionType, DeliveryMethod,
-    ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Protocol, VcmMode,
-    VolumeNormalization,
+    ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Plcmt, Protocol,
+    VcmMode, VolumeNormalization,
 };
 use crate::flag::Flag;
 use crate::ids::BannerId;
 use crate::raw::RawJson;
+use crate::version::SpecVersion;
 use crate::write::{
     Object, object, option_id, option_number, option_number_array, option_raw, option_string_array,
 };
@@ -133,6 +134,7 @@ pub(crate) struct Video {
     h: Option<u32>,
     startdelay: Option<i32>,
     placement: Option<Placement>,
+    plcmt: Option<Plcmt>,
     linearity: Option<Linearity>,
     skip: Option<Flag>,
     skipmin: Option<u32>,
@@ -155,6 +157,7 @@ setters!(Video {
     set_h => h: Option<u32>,
     set_startdelay => startdelay: Option<i32>,
     set_placement => placement: Option<Placement>,
+    set_plcmt => plcmt: Option<Plcmt>,
     set_linearity => linearity: Option<Linearity>,
     set_skip => skip: Option<Flag>,
     set_skipmin => skipmin: Option<u32>,
@@ -168,7 +171,16 @@ setters!(Video {
 });
 
 impl Video {
-    pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
+    /// Returns the legacy 2.5 placement, when the profile set one.
+    pub(crate) const fn placement(&self) -> Option<Placement> {
+        self.placement
+    }
+
+    pub(crate) fn write<W: fmt::Write>(
+        &self,
+        f: &mut Object<'_, W>,
+        spec: SpecVersion,
+    ) -> fmt::Result {
         option_string_array(f, "mimes", self.mimes)?;
         option_number(f, "minduration", self.minduration)?;
         option_number(f, "maxduration", self.maxduration)?;
@@ -177,6 +189,11 @@ impl Video {
         option_number(f, "h", self.h)?;
         option_number(f, "startdelay", self.startdelay)?;
         option_number(f, "placement", self.placement)?;
+
+        if spec.is_v26() {
+            option_number(f, "plcmt", self.plcmt)?;
+        }
+
         option_number(f, "linearity", self.linearity)?;
         option_number(f, "skip", self.skip)?;
         option_number(f, "skipmin", self.skipmin)?;
@@ -203,6 +220,7 @@ impl Video {
             h: Some(480),
             startdelay: Some(-1),
             placement: Some(Placement::IN_STREAM),
+            plcmt: Some(Plcmt::INSTREAM),
             linearity: Some(Linearity::LINEAR),
             skip: Some(Flag::Yes),
             skipmin: Some(5),

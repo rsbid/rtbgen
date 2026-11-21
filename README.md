@@ -30,6 +30,7 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 | A valid request for a test | `Request::builder(Profile::SiteDisplay).seed(Seed::new(1)).build()` |
 | A specific shape (video, native, PMP, app, multi-impression) | pick the matching `Profile` |
 | An OpenRTB 2.5 request | add `.spec(SpecVersion::V25)`; 2.6 is the default |
+| A field the target revision deprecated | add `.deprecated_fields(DeprecatedFields::Include)`; the default writes its replacement |
 | Several impressions | `.impressions_exact(ImpressionCount::new(2))`: an exact count in 1..=3, over a profile's default |
 | A private marketplace | `.deals(Deals::new(3))`, on any profile |
 | A bid floor | `.floor(Floor::cpm(1.50, Currency::USD))` |
@@ -55,10 +56,16 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 | `PmpDeals` | site, banner + pmp | deal priority, deal floors |
 | `MultiImp` | site, mixed media | multi-impression auctions, truncation (2..=3 imp by default) |
 | `Sparse` | `id` + one banner `imp` | presence rules (missing device/site) |
-| `Maximal` | every field the model can emit | the largest valid request |
+| `Maximal` | every field the active policy allows | the largest valid request |
 
 `Maximal` alternates `site` and `app` with the seed: OpenRTB forbids both at once, so the seed
 chooses which supply source the request keeps. Every other field appears in either variant.
+
+Fields a revision deprecated are omitted by default and replaced by the revision's own field:
+an OpenRTB 2.6 video impression carries `imp.video.plcmt`, not the deprecated
+`imp.video.placement`. Add `.deprecated_fields(DeprecatedFields::Include)` to emit the legacy
+field next to its replacement, or pass `--include-deprecated` to the CLI. OpenRTB 2.5 has no
+deprecated field in the model, so the policy does not change its bytes.
 
 ## Privacy
 
@@ -230,6 +237,7 @@ rtbgen = { version = "0.3", features = ["arbitrary", "proptest", "serde"] }
 rtbgen --profile app_rewarded --seed 42 --count 10000 --out ./requests/
 rtbgen --profile pmp_deals --spec 2.5 --seed 42
 rtbgen --profile site_display --seed 42 --count 100 --degrade 5% --out ./malformed/
+rtbgen --profile site_video --seed 42 --include-deprecated
 rtbgen --list-profiles
 rtbgen corpus --verify
 ```

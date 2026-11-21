@@ -4,7 +4,8 @@ use std::fmt;
 use std::path::PathBuf;
 
 use rtbgen::{
-    Currency, Deals, DegradeRate, Floor, ImpressionCount, Privacy, Profile, Seed, SpecVersion,
+    Currency, Deals, DegradeRate, DeprecatedFields, Floor, ImpressionCount, Privacy, Profile, Seed,
+    SpecVersion,
 };
 
 /// A fully parsed command.
@@ -31,6 +32,7 @@ pub(crate) struct Generate {
     pub(crate) floor: Option<Floor>,
     pub(crate) privacy: Option<Privacy>,
     pub(crate) degrade: Option<DegradeRate>,
+    pub(crate) deprecated: DeprecatedFields,
     pub(crate) out: Option<PathBuf>,
 }
 
@@ -74,6 +76,7 @@ impl Default for Generate {
             floor: None,
             privacy: None,
             degrade: None,
+            deprecated: DeprecatedFields::Omit,
             out: None,
         }
     }
@@ -156,6 +159,9 @@ impl<I: Iterator<Item = String>> Parser<I> {
             "--degrade" => {
                 let value = self.value("--degrade")?;
                 self.generate.degrade = Some(DegradeRate::percent(parse_degrade(&value)?));
+            }
+            "--include-deprecated" => {
+                self.generate.deprecated = DeprecatedFields::Include;
             }
             "--out" => {
                 self.generate.out = Some(PathBuf::from(self.value("--out")?));
@@ -284,7 +290,7 @@ impl fmt::Display for Error {
 
 #[cfg(test)]
 mod tests {
-    use rtbgen::{Consent, DegradeRate, Privacy, Profile, SpecVersion};
+    use rtbgen::{Consent, DegradeRate, DeprecatedFields, Privacy, Profile, SpecVersion};
 
     use super::{Command, Error};
 
@@ -392,6 +398,26 @@ mod tests {
         assert!(matches!(
             parse_command(&["--profile", "AppRewarded"]),
             Err(Error::InvalidValue { .. })
+        ));
+    }
+
+    #[test]
+    fn the_deprecated_fields_flag_defaults_off_and_turns_on() {
+        let deprecated = |command: Option<Command>| match command {
+            Some(Command::Generate(generate)) => Some(generate.deprecated),
+            _ => None,
+        };
+
+        assert_eq!(deprecated(parse_command(&[]).ok()), Some(DeprecatedFields::Omit));
+        assert_eq!(
+            deprecated(parse_command(&["--include-deprecated"]).ok()),
+            Some(DeprecatedFields::Include)
+        );
+        assert!(matches!(
+            parse_command(&["--include-deprecated", "--profile", "site_video"]),
+            Ok(Command::Generate(generate))
+                if generate.deprecated == DeprecatedFields::Include
+                    && generate.profile == Profile::SiteVideo
         ));
     }
 

@@ -37,6 +37,11 @@ let json: String = req.to_json_string();
   fixed shape.
 - Add `use rtbgen::Profile::*;` only inside a test module; the variants are unprefixed
   and collide with domain types otherwise.
+- A field the target revision deprecated is omitted by default and replaced by the revision's
+  own field: 2.6 video impressions carry `imp.video.plcmt`, not `imp.video.placement`. For a
+  legacy parser that still reads the old field, add
+  `.deprecated_fields(DeprecatedFields::Include)` (CLI `--include-deprecated`) and expect both
+  fields. OpenRTB 2.5 bytes do not depend on the policy.
 - For a parser's failure path, add `.degrade(DegradeRate::percent(5))`: one deliberate
   OpenRTB violation per mutated request, still valid JSON. `percent(0)` is off and
   `percent(100)` always mutates; `request.mutation()` names the defect.

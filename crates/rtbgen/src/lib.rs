@@ -28,6 +28,7 @@
 //! | An `OpenRTB` 2.5 request | add `.spec(SpecVersion::V25)`; 2.6 is the default |
 //! | Extra impressions, a marketplace or a floor | [`ImpressionCount`], [`Deals`], [`Floor`] |
 //! | An exact bug reproduction | keep the [`Seed`] in the test, not the JSON |
+//! | A deprecated field a legacy parser still reads | add `.deprecated_fields(DeprecatedFields::Include)`; the default writes its replacement |
 //! | Profiles as data | [`Profile::from_name`] and [`Profile::ALL`] |
 //! | Fixtures without the API | the `rtbgen` command-line interface |
 //! | Fuzzing where every byte matters | the `arbitrary` feature: `Request: arbitrary::Arbitrary` |
@@ -37,6 +38,10 @@
 //!
 //! Both 2.x revisions share one wire model: [`SpecVersion::V25`] drops the
 //! fields the 2.6 revision added, and [`SpecVersion::V26`] is the default.
+//! Fields a revision deprecated are omitted by default and replaced by the
+//! revision's own field: 2.6 video impressions carry `imp.video.plcmt`, not the
+//! deprecated `imp.video.placement`. [`DeprecatedFields::Include`] adds the
+//! deprecated field back for a parser that still reads it.
 //! `OpenRTB` 3.0 is a different object model and is planned for a future version
 //! of this project; it will not change 2.x output.
 //!
@@ -112,6 +117,7 @@ pub mod corpus;
 mod currency;
 mod deals;
 mod degrade;
+mod deprecated;
 #[expect(
     clippy::redundant_pub_crate,
     reason = "the module is crate-private; `pub` would trip `unreachable_pub`"
@@ -168,6 +174,7 @@ pub use builder::RequestBuilder;
 pub use currency::{Currency, UnknownCurrency};
 pub use deals::Deals;
 pub use degrade::{DegradeRate, Mutation};
+pub use deprecated::{DeprecatedFields, UnknownDeprecatedFields};
 pub use floor::Floor;
 pub use impressions::ImpressionCount;
 pub use privacy::{Consent, Privacy, UnknownPrivacy};

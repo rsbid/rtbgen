@@ -2,7 +2,7 @@
 
 #![expect(clippy::expect_used, reason = "in tests a panic = a failed test")]
 
-use rtbgen::{Profile, Request, Seed, SpecVersion};
+use rtbgen::{DeprecatedFields, Profile, Request, Seed, SpecVersion};
 use serde_json::Value;
 
 fn render(profile: Profile, spec: SpecVersion, seed: u64) -> Value {
@@ -230,7 +230,11 @@ fn v25_drops_exactly_the_26_fields() {
     ];
 
     for profile in Profile::ALL {
-        let v26 = Request::builder(profile).seed(Seed::new(42)).build().to_json_string();
+        let v26 = Request::builder(profile)
+            .seed(Seed::new(42))
+            .deprecated_fields(DeprecatedFields::Include)
+            .build()
+            .to_json_string();
         let v25 = Request::builder(profile)
             .seed(Seed::new(42))
             .spec(SpecVersion::V25)
@@ -267,6 +271,20 @@ fn v25_drops_exactly_the_26_fields() {
             remove_path(&mut expected, path);
         }
 
+        // `plcmt` is the 2.6 replacement of `placement`; it can sit on any
+        // impression, so the helper walks every `imp.video`, not just the first.
+        assert!(!remove_video_plcmt(&mut actual), "{profile}: plcmt leaked into 2.5");
+
+        let expected_video = expected
+            .pointer("/imp")
+            .and_then(Value::as_array)
+            .is_some_and(|imps| imps.iter().any(|imp| imp.pointer("/video").is_some()));
+        assert_eq!(
+            remove_video_plcmt(&mut expected),
+            expected_video,
+            "{profile}: the 2.6 video lost plcmt"
+        );
+
         // `ext` is the transport that differs between the revisions.
         for path in ["/user/ext", "/regs/ext"] {
             remove_path(&mut expected, path);
@@ -274,6 +292,78 @@ fn v25_drops_exactly_the_26_fields() {
         }
 
         assert_eq!(actual, expected, "{profile}");
+    }
+}
+
+#[test]
+fn deprecated_fields_follow_the_target_revision() {
+    let cases =
+        Profile::ALL.into_iter().flat_map(|profile| (0_u64..8).map(move |seed| (profile, seed)));
+
+    for (profile, seed) in cases {
+        let default = render(profile, SpecVersion::V26, seed);
+
+        let included: Value = serde_json::from_str(
+            &Request::builder(profile)
+                .seed(Seed::new(seed))
+                .deprecated_fields(DeprecatedFields::Include)
+                .build()
+                .to_json_string(),
+        )
+        .expect("2.6 with deprecated fields is valid JSON");
+
+        let v25 = render(profile, SpecVersion::V25, seed);
+        let v25_included: Value = serde_json::from_str(
+            &Request::builder(profile)
+                .seed(Seed::new(seed))
+                .spec(SpecVersion::V25)
+                .deprecated_fields(DeprecatedFields::Include)
+                .build()
+                .to_json_string(),
+        )
+        .expect("2.5 with the policy is valid JSON");
+
+        assert_eq!(
+            v25, v25_included,
+            "{profile} seed {seed}: 2.5 bytes depend on the deprecated-field policy"
+        );
+
+        let imps = default.pointer("/imp").and_then(Value::as_array);
+
+        for (index, imp) in imps.into_iter().flatten().enumerate() {
+            let Some(plcmt) = imp.pointer("/video/plcmt") else {
+                continue;
+            };
+
+            assert!(
+                imp.pointer("/video/placement").is_none(),
+                "{profile} seed {seed}: 2.6 kept the deprecated placement"
+            );
+            assert!(
+                matches!(plcmt.as_u64(), Some(1 | 3 | 4)),
+                "{profile} seed {seed}: plcmt is not a Plcmt Subtypes - Video value"
+            );
+
+            let path = std::format!("/imp/{index}/video");
+            assert!(
+                included.pointer(&std::format!("{path}/placement")).is_some(),
+                "{profile} seed {seed}: Include dropped the legacy placement"
+            );
+            assert_eq!(
+                included.pointer(&std::format!("{path}/plcmt")),
+                Some(plcmt),
+                "{profile} seed {seed}: the policy changed the replacement"
+            );
+
+            assert!(
+                v25.pointer(&std::format!("{path}/placement")).is_some(),
+                "{profile} seed {seed}: 2.5 lost its placement"
+            );
+            assert!(
+                v25.pointer(&std::format!("{path}/plcmt")).is_none(),
+                "{profile} seed {seed}: plcmt leaked into 2.5"
+            );
+        }
     }
 }
 
@@ -285,4 +375,20 @@ fn remove_path(value: &mut Value, path: &str) {
     if let Some(object) = value.pointer_mut(parent).and_then(Value::as_object_mut) {
         drop(object.remove(key));
     }
+}
+
+fn remove_video_plcmt(value: &mut Value) -> bool {
+    let Some(imps) = value.pointer_mut("/imp").and_then(Value::as_array_mut) else {
+        return false;
+    };
+    let mut removed = false;
+
+    for imp in imps {
+        let Some(video) = imp.get_mut("video").and_then(Value::as_object_mut) else {
+            continue;
+        };
+        removed |= video.remove("plcmt").is_some();
+    }
+
+    removed
 }

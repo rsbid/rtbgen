@@ -9,6 +9,7 @@ use core::fmt;
 
 use crate::deals::Deals;
 use crate::degrade::DegradeRate;
+use crate::deprecated::DeprecatedFields;
 use crate::floor::Floor;
 use crate::impressions::ImpressionCount;
 use crate::privacy::{Consent, Privacy};
@@ -48,6 +49,7 @@ pub struct CorpusEntry {
     floor: Option<Floor>,
     privacy: Option<Privacy>,
     degrade: DegradeRate,
+    deprecated: DeprecatedFields,
 }
 
 impl CorpusEntry {
@@ -105,11 +107,20 @@ impl CorpusEntry {
         self.degrade
     }
 
+    /// The deprecated-field policy of the entry.
+    #[must_use]
+    pub const fn deprecated(self) -> DeprecatedFields {
+        self.deprecated
+    }
+
     /// Regenerates the fixture.
     #[must_use]
     pub fn request(self) -> Request {
-        let mut builder =
-            Request::builder(self.profile).seed(self.seed).spec(self.spec).degrade(self.degrade);
+        let mut builder = Request::builder(self.profile)
+            .seed(self.seed)
+            .spec(self.spec)
+            .degrade(self.degrade)
+            .deprecated_fields(self.deprecated);
 
         if let Some(count) = self.impressions {
             builder = builder.impressions_exact(count);
@@ -139,6 +150,7 @@ const fn entry(name: &'static str, spec: SpecVersion, profile: Profile, seed: u6
         floor: None,
         privacy: None,
         degrade: DegradeRate::OFF,
+        deprecated: DeprecatedFields::Omit,
     }
 }
 
@@ -173,6 +185,11 @@ const fn with_degrade(mut entry: CorpusEntry, percent: u16) -> CorpusEntry {
 
 const fn with_privacy(mut entry: CorpusEntry, privacy: Privacy) -> CorpusEntry {
     entry.privacy = Some(privacy);
+    entry
+}
+
+const fn with_deprecated(mut entry: CorpusEntry, deprecated: DeprecatedFields) -> CorpusEntry {
+    entry.deprecated = deprecated;
     entry
 }
 
@@ -239,6 +256,17 @@ pub const ALL: &[CorpusEntry] = &[
         ),
         5_000,
         crate::Currency::GBP,
+    ),
+    with_deprecated(
+        with_floor_in(
+            with_impressions(
+                entry("knobs-deprecated-site-video-v26-6", SpecVersion::V26, Profile::SiteVideo, 6),
+                2,
+            ),
+            5_000,
+            crate::Currency::GBP,
+        ),
+        DeprecatedFields::Include,
     ),
     with_deals(
         with_impressions(
@@ -338,6 +366,9 @@ pub fn write_manifest(sink: &mut impl fmt::Write) -> fmt::Result {
         if let Some(privacy) = entry.privacy() {
             writeln!(sink, "privacy = \"{}\"", privacy.name())?;
         }
+        if entry.deprecated() != DeprecatedFields::Omit {
+            writeln!(sink, "deprecated_fields = \"{}\"", entry.deprecated())?;
+        }
         if entry.degrade().basis_points() > 0 {
             let percent = entry.degrade().basis_points().checked_div(100).unwrap_or(0);
             writeln!(sink, "degrade = {percent}")?;
@@ -357,6 +388,7 @@ mod tests {
     extern crate std;
 
     use super::ALL;
+    use crate::deprecated::DeprecatedFields;
     use crate::privacy::Privacy;
     use crate::profile::Profile;
     use crate::version::SpecVersion;
@@ -429,6 +461,7 @@ mod tests {
                 .any(|entry| { entry.privacy().is_some() && entry.degrade().basis_points() > 0 })
         );
         assert!(ALL.iter().any(|entry| entry.degrade().basis_points() > 0));
+        assert!(ALL.iter().any(|entry| entry.deprecated() == DeprecatedFields::Include));
     }
 
     #[test]

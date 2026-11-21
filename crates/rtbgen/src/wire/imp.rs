@@ -53,7 +53,7 @@ impl Imp {
             object_field(f, "banner", |f| banner.write(f))?;
         }
         if let Some(video) = &self.video {
-            object_field(f, "video", |f| video.write(f))?;
+            object_field(f, "video", |f| video.write(f, spec))?;
         }
         if let Some(audio) = &self.audio {
             object_field(f, "audio", |f| audio.write(f))?;
@@ -94,6 +94,11 @@ impl Imp {
     /// Returns the banner of this impression for mutation, when it has one.
     pub(crate) const fn banner_mut(&mut self) -> Option<&mut Banner> {
         self.banner.as_mut()
+    }
+
+    /// Returns the video of this impression for mutation, when it has one.
+    pub(crate) const fn video_mut(&mut self) -> Option<&mut Video> {
+        self.video.as_mut()
     }
 
     #[cfg(test)]

@@ -8,11 +8,12 @@ The emitted bytes are part of the public API: changing them for an existing
 `(spec, profile, seed, knobs)` is a breaking change. `corpus/v1` is the initial
 byte contract.
 
-## [0.3.0] - 2026-11-20
+## [0.3.0] - 2026-11-21
 
-The `degrade` knob, the closed mutation set, coherent GDPR/COPPA scenarios, and the fields the
-parser matrix and the OpenRTB 2.6 audit caught. Existing profiles change bytes, so `corpus/v1` is
-regenerated in place. No version has been released yet, so there is no second corpus contract.
+The `degrade` knob, the closed mutation set, coherent GDPR/COPPA scenarios, the deprecated-field
+policy, and the fields the parser matrix and the OpenRTB 2.6 audit caught. Existing profiles
+change bytes, so `corpus/v1` is regenerated in place. No version has been released yet, so there
+is no second corpus contract.
 
 ### Added
 
@@ -41,6 +42,10 @@ regenerated in place. No version has been released yet, so there is no second co
   in the `proptest` strategy.
 - `rtbgen corpus --write` writes `manifest.toml` as well as the JSON fixtures.
 - `--degrade <PERCENT>` in the CLI, accepting `5` and `5%`.
+- `DeprecatedFields` and `RequestBuilder::deprecated_fields`: the default `Omit` drops fields the
+  target revision deprecated and writes the revision's replacement instead; `Include` keeps the
+  deprecated field next to it. The CLI flag is `--include-deprecated`. OpenRTB 2.5 bytes do not
+  depend on the policy.
 - `examples/05_malformed_input.rs`.
 
 ### Changed (breaking for snapshots)
@@ -62,6 +67,13 @@ regenerated in place. No version has been released yet, so there is no second co
 - `device.geo.region` uses ISO-3166-2, with the 2-letter state code for the USA as the spec
   requires (`RU-MOW`, `NY`, `DE-BE`, `GB-ENG`, `FR-IDF`, `ES-MD`, `IT-RM`, `NL-NH`).
 - `source.pchain` is a valid TAG Payment ID chain (`XYZ01234:ABCD56789`), not `pchain-1`.
+- OpenRTB 2.6 video impressions write `imp.video.plcmt`, the field that replaced the deprecated
+  `imp.video.placement` in 2.6-202303, instead of `placement`. The legacy value is mapped onto the
+  new list (`In-Stream` → `Instream`, `Interstitial` → `Interstitial`, `In-Article`/`In-Feed` →
+  `No Content/Standalone`), so every 2.6 profile with video changes bytes. OpenRTB 2.5 output is
+  unchanged. `.deprecated_fields(DeprecatedFields::Include)` (CLI `--include-deprecated`) keeps
+  `placement` next to `plcmt`, the migration pattern for a parser that still reads it. `Maximal`
+  follows the policy: the default carries `plcmt`, `Include` adds `placement`.
 - Privacy is coherent instead of three independent draws. The TC strings are now syntactically
   valid TCF v2.2 (a `Created` equal to `LastUpdated`, `TcfPolicyVersion=4`, valid language and
   publisher country, a terminated vendor section; `CmpId=0` marks them as synthetic),
@@ -89,12 +101,15 @@ regenerated in place. No version has been released yet, so there is no second co
   defect than before; `corpus/v1` is regenerated in place.
 - The corpus is regenerated in `corpus/v1`. There is no `corpus/v2`: the crate has not been
   released, so the initial contract is the only one. The privacy entries now cover `Maximal`,
-  `Sparse`, a V25 GDPR override and a privacy + degrade combination. Regenerate `insta`
-  snapshots: every existing `(spec, profile, seed, knobs)` tuple produced new bytes.
+  `Sparse`, a V25 GDPR override and a privacy + degrade combination. The new
+  `knobs-deprecated-site-video-v26-6` entry is the `Include` twin of `knobs-site-video-v26-6`:
+  it differs only by the kept `placement`. Regenerate `insta` snapshots: every existing
+  `(spec, profile, seed, knobs)` tuple produced new bytes.
 - The `arbitrary` adapter draws a degrade rate and a privacy scenario as typed knobs, so a fuzz
   input can produce a malformed or a specific privacy request. This changes the adapter's byte
   mapping for an existing input; the pinned uniform fixture keeps its bytes. The `proptest`
-  strategy varies the rate and the scenario and shrinks them toward zero/absence.
+  strategy varies the rate, the scenario and the deprecated-field policy and shrinks them toward
+  zero/absence; the `arbitrary` adapter uses the default policy and does not draw it.
 
 ### Notes
 

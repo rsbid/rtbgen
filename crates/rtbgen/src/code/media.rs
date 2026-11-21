@@ -134,7 +134,7 @@ impl fmt::Display for Protocol {
 /// `Audio.placement`.
 ///
 /// The field is deprecated in `OpenRTB` 2.6 in favour of `plcmt`, but the model
-/// keeps it because 2.5 still defines it.
+/// keeps it because 2.5 still defines it and [`Plcmt`] is not a rename.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Placement(u16);
 
@@ -153,6 +153,44 @@ impl Placement {
 }
 
 impl fmt::Display for Placement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// The placement type of a video impression: `Video.plcmt`.
+///
+/// Values come from `AdCOM`'s `Plcmt` Subtypes - Video list. The field replaced
+/// `Video.placement` in `OpenRTB` 2.6-202303, but the two lists are not a
+/// rename: a legacy in-article or in-feed placement maps to no-content.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Plcmt(u16);
+
+impl Plcmt {
+    /// Instream: pre-roll, mid-roll or post-roll with the requested content.
+    pub(crate) const INSTREAM: Self = Self(1);
+
+    /// Interstitial: played without video content, taking over the viewport.
+    pub(crate) const INTERSTITIAL: Self = Self(3);
+
+    /// No content/standalone: in-content, in-feed, sticky or floating.
+    pub(crate) const NO_CONTENT: Self = Self(4);
+
+    /// Maps a legacy 2.5 placement onto the 2.6 list.
+    ///
+    /// The mapping follows the `OpenRTB` 2.6 implementation guide: in-stream is
+    /// `Instream`, interstitial is `Interstitial`, and in-article/in-feed are
+    /// `No Content/Standalone`.
+    pub(crate) const fn from_placement(placement: Placement) -> Self {
+        match placement.0 {
+            1 => Self::INSTREAM,
+            5 => Self::INTERSTITIAL,
+            _ => Self::NO_CONTENT,
+        }
+    }
+}
+
+impl fmt::Display for Plcmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -252,5 +290,18 @@ impl CompanionType {
 impl fmt::Display for CompanionType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Placement, Plcmt};
+
+    #[test]
+    fn legacy_placements_map_onto_the_26_list() {
+        assert_eq!(Plcmt::from_placement(Placement::IN_STREAM), Plcmt::INSTREAM);
+        assert_eq!(Plcmt::from_placement(Placement::IN_ARTICLE), Plcmt::NO_CONTENT);
+        assert_eq!(Plcmt::from_placement(Placement::IN_FEED), Plcmt::NO_CONTENT);
+        assert_eq!(Plcmt::from_placement(Placement::INTERSTITIAL), Plcmt::INTERSTITIAL);
     }
 }

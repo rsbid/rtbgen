@@ -18,8 +18,8 @@ pub(crate) use auction::{AuctionType, DealAuctionType};
 pub(crate) use context::{FinalDecision, GppSectionId, SsaiMode};
 pub(crate) use media::{
     ApiFramework, BlockedBannerType, BlockedCreativeAttribute, CompanionType, DeliveryMethod,
-    ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Protocol, VcmMode,
-    VolumeNormalization,
+    ExpandableDirection, FeedType, Linearity, Placement, PlacementPosition, Plcmt, Protocol,
+    VcmMode, VolumeNormalization,
 };
 pub(crate) use target::{DeviceType, LocationType};
 

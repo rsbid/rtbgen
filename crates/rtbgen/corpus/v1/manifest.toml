@@ -186,6 +186,16 @@ floor_cpm = 0.5
 currency = "GBP"
 
 [[request]]
+name = "knobs-deprecated-site-video-v26-6"
+spec = "2.6"
+profile = "site_video"
+seed = 6
+impressions = 2
+floor_cpm = 0.5
+currency = "GBP"
+deprecated_fields = "include"
+
+[[request]]
 name = "knobs-app-banner-v25-4"
 spec = "2.5"
 profile = "app_banner"

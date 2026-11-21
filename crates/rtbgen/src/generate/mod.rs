@@ -21,6 +21,7 @@ mod sparse;
 
 use crate::deals::Deals;
 use crate::degrade::{self, DegradeRate, Mutation};
+use crate::deprecated::DeprecatedFields;
 use crate::floor::Floor;
 use crate::ids::RequestId;
 use crate::impressions::ImpressionCount;
@@ -41,6 +42,7 @@ pub(crate) struct Config {
     privacy: Option<Privacy>,
     degrade: DegradeRate,
     spec: SpecVersion,
+    deprecated: DeprecatedFields,
 }
 
 impl Config {
@@ -58,6 +60,7 @@ impl Config {
             privacy: None,
             degrade: DegradeRate::OFF,
             spec: SpecVersion::V26,
+            deprecated: DeprecatedFields::Omit,
         }
     }
 
@@ -70,6 +73,12 @@ impl Config {
     /// Sets the revision the mutation selector is filtered by.
     pub(crate) const fn spec(mut self, spec: SpecVersion) -> Self {
         self.spec = spec;
+        self
+    }
+
+    /// Sets the deprecated-field policy.
+    pub(crate) const fn deprecated(mut self, deprecated: DeprecatedFields) -> Self {
+        self.deprecated = deprecated;
         self
     }
 
@@ -121,6 +130,11 @@ impl Config {
     pub(crate) const fn spec_version(self) -> SpecVersion {
         self.spec
     }
+
+    /// Returns the deprecated-field policy.
+    pub(crate) const fn deprecated_fields(self) -> DeprecatedFields {
+        self.deprecated
+    }
 }
 
 /// A generated body and the mutation it carries, if any.
@@ -171,6 +185,7 @@ pub(crate) fn build_with(
     };
 
     knobs::apply_knobs(&mut model, config);
+    knobs::apply_deprecated_fields(&mut model, config);
 
     let mutation =
         degrade::apply(&mut model, config.degrade_rate(), config.spec_version(), entropy);

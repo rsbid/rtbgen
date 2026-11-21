@@ -1,5 +1,6 @@
 use crate::deals::Deals;
 use crate::degrade::DegradeRate;
+use crate::deprecated::DeprecatedFields;
 use crate::floor::Floor;
 use crate::generate::{self, Config};
 use crate::ids::RequestId;
@@ -22,7 +23,9 @@ use crate::version::SpecVersion;
 ///
 /// The default configuration is [`Seed::new(0)`](Seed::new), `OpenRTB` 2.6 and
 /// no knobs. A knob that is not set changes nothing, so a profile's default
-/// bytes are stable.
+/// bytes are stable. Fields the target revision deprecated are omitted by
+/// default and replaced by the revision's own field; see
+/// [`RequestBuilder::deprecated_fields`].
 #[derive(Clone, Copy, Debug)]
 pub struct RequestBuilder {
     profile: Profile,
@@ -33,6 +36,7 @@ pub struct RequestBuilder {
     floor: Option<Floor>,
     privacy: Option<Privacy>,
     degrade: DegradeRate,
+    deprecated: DeprecatedFields,
 }
 
 impl RequestBuilder {
@@ -46,6 +50,7 @@ impl RequestBuilder {
             floor: None,
             privacy: None,
             degrade: DegradeRate::OFF,
+            deprecated: DeprecatedFields::Omit,
         }
     }
 
@@ -105,6 +110,21 @@ impl RequestBuilder {
         self
     }
 
+    /// Sets whether the generator emits fields the target revision deprecated.
+    ///
+    /// The default, [`DeprecatedFields::Omit`], writes the revision's
+    /// replacement instead: `OpenRTB` 2.6 video impressions carry
+    /// `imp.video.plcmt`, not the deprecated `imp.video.placement`. With
+    /// [`DeprecatedFields::Include`] the deprecated field is emitted next to
+    /// its replacement, which is the migration pattern for parsers that still
+    /// read it. `OpenRTB` 2.5 has no deprecated field in the model, so the
+    /// policy does not change its bytes.
+    #[must_use]
+    pub const fn deprecated_fields(mut self, deprecated: DeprecatedFields) -> Self {
+        self.deprecated = deprecated;
+        self
+    }
+
     /// Makes a share of requests carry one deliberate `OpenRTB` violation.
     ///
     /// The mutation is drawn after the profile body, so a request without a
@@ -126,7 +146,8 @@ impl RequestBuilder {
         let mut config =
             Config::new(RequestId::from_seed(self.seed), self.impressions, self.deals, self.floor)
                 .degrade(self.degrade)
-                .spec(self.spec);
+                .spec(self.spec)
+                .deprecated(self.deprecated);
 
         if let Some(privacy) = self.privacy {
             config = config.privacy_override(privacy);
@@ -142,6 +163,7 @@ impl RequestBuilder {
 mod tests {
     use super::RequestBuilder;
     use crate::deals::Deals;
+    use crate::deprecated::DeprecatedFields;
     use crate::floor::Floor;
     use crate::impressions::ImpressionCount;
     use crate::privacy::Privacy;
@@ -166,7 +188,8 @@ mod tests {
             .impressions_exact(ImpressionCount::new(2))
             .deals(Deals::new(3))
             .floor(Floor::cpm(1.5, crate::currency::Currency::USD))
-            .privacy(Privacy::GdprWithoutConsent);
+            .privacy(Privacy::GdprWithoutConsent)
+            .deprecated_fields(DeprecatedFields::Include);
 
         let request = builder.build();
 
@@ -182,5 +205,33 @@ mod tests {
 
         assert!(json.contains("\"coppa\":1"), "the COPPA flag was not emitted");
         assert!(!json.contains("\"user\""), "a child-directed request kept the user");
+    }
+
+    #[test]
+    fn the_deprecated_fields_knob_controls_video_placement() {
+        let default =
+            RequestBuilder::new(Profile::SiteVideo).seed(Seed::new(7)).build().to_json_string();
+
+        assert!(default.contains("\"plcmt\":"), "2.6 lost the replacement field");
+        assert!(!default.contains("\"placement\":"), "2.6 kept the deprecated field");
+
+        let included = RequestBuilder::new(Profile::SiteVideo)
+            .seed(Seed::new(7))
+            .deprecated_fields(DeprecatedFields::Include)
+            .build()
+            .to_json_string();
+
+        assert!(included.contains("\"plcmt\":"), "the replacement was dropped");
+        assert!(included.contains("\"placement\":"), "the deprecated field was not included");
+
+        let v25 = RequestBuilder::new(Profile::SiteVideo)
+            .seed(Seed::new(7))
+            .spec(SpecVersion::V25)
+            .deprecated_fields(DeprecatedFields::Include)
+            .build()
+            .to_json_string();
+
+        assert!(v25.contains("\"placement\":"), "2.5 lost its placement field");
+        assert!(!v25.contains("\"plcmt\":"), "a 2.6 field leaked into 2.5");
     }
 }

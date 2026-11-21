@@ -59,6 +59,8 @@ fn maximal_imp_is_complete() {
         Some("image/jpeg")
     );
     assert_eq!(value.pointer("/imp/0/video/startdelay").and_then(Value::as_i64), Some(-1));
+    assert_eq!(value.pointer("/imp/0/video/placement").and_then(Value::as_u64), Some(1));
+    assert_eq!(value.pointer("/imp/0/video/plcmt").and_then(Value::as_u64), Some(1));
     assert_eq!(
         value.pointer("/imp/0/native/request").and_then(Value::as_str),
         Some(r#"{"ver":"1.2","assets":[{"id":1,"required":1,"title":{"len":80}}]}"#)
@@ -120,6 +122,7 @@ fn v25_is_v26_without_the_26_only_fields() {
     for path in [
         "/imp/0/rwdd",
         "/imp/0/ssai",
+        "/imp/0/video/plcmt",
         "/user/consent",
         "/regs/gdpr",
         "/regs/gpp",
@@ -128,6 +131,8 @@ fn v25_is_v26_without_the_26_only_fields() {
     ] {
         assert!(v25.pointer(path).is_none(), "{path} leaked into V25");
     }
+
+    assert!(v25.pointer("/imp/0/video/placement").is_some(), "2.5 lost the legacy placement");
 
     // The same signals travel in `ext` under 2.5, where 2.6 promoted them.
     assert_eq!(
@@ -146,6 +151,7 @@ fn v25_is_v26_without_the_26_only_fields() {
     for path in [
         "/imp/0/rwdd",
         "/imp/0/ssai",
+        "/imp/0/video/plcmt",
         "/user/consent",
         "/regs/gdpr",
         "/regs/gpp",

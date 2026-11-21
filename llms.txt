@@ -39,7 +39,11 @@ golden corpus. Every knob is a typed value, so `build()` cannot fail.
 ## API map
 
 - `Request::builder(Profile)` — start here; `.seed()`, `.spec()`, `.impressions_exact()`,
-  `.deals()`, `.floor()`, `.privacy()`, `.degrade()`, `.build()`.
+  `.deals()`, `.floor()`, `.privacy()`, `.degrade()`, `.deprecated_fields()`, `.build()`.
+- `DeprecatedFields` — `.deprecated_fields(DeprecatedFields::Include)` keeps a field the target
+  revision deprecated next to its replacement (`imp.video.placement` next to `imp.video.plcmt`
+  under 2.6); the default omits it. The CLI flag is `--include-deprecated`; 2.5 output is
+  unchanged by the policy.
 - `Privacy` / `Consent` — one scenario owns `regs`, the TCF v2.2 TC string, `regs.gpp` and
   the request location; `Privacy::Coppa` also drops identifiers and precise geolocation.
   `Privacy::ALL`, `name()` and `from_name()` are the stable names used by `--privacy` and the
@@ -73,7 +77,9 @@ Optional features add APIs, never new bytes:
 `MultiImp` (2..=3 impressions by default; `.impressions_exact()` overrides the count),
 `Sparse`, `Maximal`.
 
-`Maximal` alternates `site` and `app` with the seed; OpenRTB forbids both at once.
+`Maximal` alternates `site` and `app` with the seed; OpenRTB forbids both at once. It covers
+every field the active `DeprecatedFields` policy allows: the default writes 2.6 `plcmt`, and
+`Include` adds the deprecated `placement` next to it.
 
 ## Malformed requests
 

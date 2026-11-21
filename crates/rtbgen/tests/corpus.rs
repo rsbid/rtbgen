@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use rtbgen::corpus::{self, CorpusEntry};
-use rtbgen::{DegradeRate, Mutation, Privacy, Profile, Seed, SpecVersion};
+use rtbgen::{DegradeRate, DeprecatedFields, Mutation, Privacy, Profile, Seed, SpecVersion};
 use serde_json::Value;
 
 #[test]
@@ -47,6 +47,10 @@ fn the_manifest_lists_every_entry_and_nothing_else() {
             "{}",
             entry.name()
         );
+        let include_deprecated = entry.deprecated() != DeprecatedFields::Omit;
+        assert_eq!(listed.knobs & 16 != 0, include_deprecated, "{}", entry.name());
+        let expected_deprecated = include_deprecated.then(|| entry.deprecated().name());
+        assert_eq!(listed.deprecated.as_deref(), expected_deprecated, "{}", entry.name());
         let expected_degrade = listed.degrade.map_or(DegradeRate::OFF, DegradeRate::percent);
         assert_eq!(expected_degrade, entry.degrade(), "{}", entry.name());
 
@@ -89,9 +93,11 @@ struct Listed {
     spec: String,
     profile: String,
     seed: u64,
-    /// Bit set: 1 = impressions, 2 = deals, 4 = floor, 8 = privacy.
+    /// Bit set: 1 = impressions, 2 = deals, 4 = floor, 8 = privacy,
+    /// 16 = deprecated fields.
     knobs: u8,
     privacy: Option<String>,
+    deprecated: Option<String>,
     degrade: Option<u16>,
     mutation: Option<String>,
 }
@@ -118,6 +124,7 @@ fn parse_manifest() -> Vec<Listed> {
                 seed: 0,
                 knobs: 0,
                 privacy: None,
+                deprecated: None,
                 degrade: None,
                 mutation: None,
             });
@@ -141,6 +148,10 @@ fn parse_manifest() -> Vec<Listed> {
             "privacy" => {
                 entry.knobs |= 8;
                 entry.privacy = Some(value.to_owned());
+            }
+            "deprecated_fields" => {
+                entry.knobs |= 16;
+                entry.deprecated = Some(value.to_owned());
             }
             "degrade" => entry.degrade = Some(value.parse().expect("a degrade percentage")),
             "mutation" => entry.mutation = Some(value.to_owned()),

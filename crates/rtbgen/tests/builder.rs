@@ -3,7 +3,8 @@
 #![expect(clippy::expect_used, reason = "in tests a panic = a failed test")]
 
 use rtbgen::{
-    BytesEntropy, Currency, Deals, Floor, ImpressionCount, Profile, Request, Seed, SpecVersion,
+    BytesEntropy, Currency, Deals, DeprecatedFields, Floor, ImpressionCount, Profile, Request,
+    Seed, SpecVersion,
 };
 use serde_json::Value;
 
@@ -186,6 +187,75 @@ fn entropy_generation_is_deterministic_and_seedless() {
     assert_eq!(first.profile(), Profile::SiteDisplay);
     assert_eq!(first.spec(), SpecVersion::V26);
     assert_eq!(first.to_json_string(), second.to_json_string());
+}
+
+#[test]
+fn the_deprecated_fields_knob_works_on_every_profile() {
+    let mut saw_video = false;
+
+    for profile in Profile::ALL {
+        let default = render(Request::builder(profile).seed(Seed::new(6)));
+        let included = render(
+            Request::builder(profile)
+                .seed(Seed::new(6))
+                .deprecated_fields(DeprecatedFields::Include),
+        );
+        let v25 = render(Request::builder(profile).seed(Seed::new(6)).spec(SpecVersion::V25));
+        let v25_included = render(
+            Request::builder(profile)
+                .seed(Seed::new(6))
+                .spec(SpecVersion::V25)
+                .deprecated_fields(DeprecatedFields::Include),
+        );
+
+        assert_eq!(v25, v25_included, "{profile}: 2.5 depends on the policy");
+
+        let imps =
+            default.pointer("/imp").and_then(Value::as_array).expect("the request has impressions");
+
+        for (index, imp) in imps.iter().enumerate() {
+            if imp.pointer("/video").is_none() {
+                continue;
+            }
+            saw_video = true;
+
+            assert!(
+                imp.pointer("/video/placement").is_none(),
+                "{profile}: the default kept the deprecated placement"
+            );
+            assert!(
+                imp.pointer("/video/plcmt").is_some(),
+                "{profile}: the default lost the replacement"
+            );
+            assert!(
+                included.pointer(&std::format!("/imp/{index}/video/placement")).is_some(),
+                "{profile}: Include dropped the deprecated field"
+            );
+            assert!(
+                v25.pointer(&std::format!("/imp/{index}/video/placement")).is_some(),
+                "{profile}: 2.5 lost its placement"
+            );
+            assert!(
+                v25.pointer(&std::format!("/imp/{index}/video/plcmt")).is_none(),
+                "{profile}: plcmt leaked into 2.5"
+            );
+        }
+    }
+
+    assert!(saw_video, "no profile generated a video impression");
+}
+
+#[test]
+fn the_entropy_path_uses_the_default_policy() {
+    let request = Request::from_entropy(
+        Profile::SiteVideo,
+        SpecVersion::V26,
+        &mut BytesEntropy::new(&[0x2A; 64]),
+    );
+    let json = request.to_json_string();
+
+    assert!(json.contains("\"plcmt\":"), "the entropy path lost the replacement");
+    assert!(!json.contains("\"placement\":"), "the entropy path kept the deprecated field");
 }
 
 #[test]
