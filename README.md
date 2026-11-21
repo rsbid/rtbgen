@@ -217,7 +217,7 @@ The output is byte-stable; do not sort keys or post-process it.
 
 ```toml
 [dev-dependencies]
-rtbgen = "0.3"
+rtbgen = "0.1"
 ```
 
 `to_json_string` needs the default `alloc` feature. `default-features = false` gives a `no_std`
@@ -226,7 +226,7 @@ writer: `write_json(&mut impl fmt::Write)`. The core has no unconditional runtim
 Optional features add adapters, never new bytes:
 
 ```toml
-rtbgen = { version = "0.3", features = ["arbitrary", "proptest", "serde"] }
+rtbgen = { version = "0.1", features = ["arbitrary", "proptest", "serde"] }
 ```
 
 | Feature | Adds |
@@ -251,16 +251,13 @@ rtbgen corpus --verify
 
 ## Roadmap
 
-The 0.3 release adds the `degrade` knob and its mutation table, and fixes the fields the parser
-matrix and the OpenRTB 2.6 audit caught: `device.ifa` (not the non-spec `idfa`), the Native
-Markup Request root, `skipmin`/`skipafter` only with `skip`, `gpp_sid` only with `gpp`, no
-`source.schain.nodes[].n`, `source.schain` only under 2.6, Supply Chain 1.1
-(`ver: "1.1"`, `complete: 2`) under 2.6, and standard code lists for
-`device.geo.country` (ISO-3166-1 alpha-3), `device.geo.region` (ISO-3166-2, 2-letter state code
-for the USA), `device.geo.city` (UN/LOCODE) and `source.pchain` (TAG Payment ID). Existing
-snapshots must be regenerated; `corpus/v1` is regenerated in place because no
-version has been released. The `arbitrary` adapter now draws a degrade rate, which changes its
-byte mapping too. After a period without behaviour changes, 1.0 freezes the API and the bytes.
+0.1.0 is the first public release: the profiles above, the `degrade` knob, the privacy scenarios
+and the adapters, over a wire format that tracks OpenRTB 2.6-202611 and the code lists verified
+by the parser matrix.
+
+After a period without behaviour changes, 1.0 freezes the API and the bytes. `corpus/v1` is the
+published byte contract: it covers every `(spec, profile, seed, knobs)` tuple a profile can
+produce, so a later change to emitted bytes ships `corpus/v2` and a breaking minor.
 
 ## License
 
