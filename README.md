@@ -95,10 +95,10 @@ profile, revision and seed was **accepted** before the mutation and **rejected**
 
 | Implementation | Version | Valid requests accepted | Defects detected |
 |---|---|---|---|
-| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 180/180 | 7/25 |
-| [`openrtb26`](https://crates.io/crates/openrtb26) | 0.1.1 | 180/180 | 2/25 |
-| [`iab-specs-openrtb`](https://crates.io/crates/iab-specs-openrtb) | 0.5.1 | 132/180 | 2/25 |
-| [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 3/11 |
+| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 180/180 | 7/28 |
+| [`openrtb26`](https://crates.io/crates/openrtb26) | 0.1.1 | 180/180 | 2/28 |
+| [`iab-specs-openrtb`](https://crates.io/crates/iab-specs-openrtb) | 0.5.1 | 132/180 | 2/28 |
+| [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 2/11 |
 
 Read the table as a map of the layer each tool checks:
 
@@ -106,7 +106,7 @@ Read the table as a map of the layer each tool checks:
   `site` and `app`, `tmax: 0` and `cur` as a string. It warns on, but accepts, `"usd"`/`""`
   in `bidfloorcur`, an implausible `tmax`, a malformed currency code and a missing or dotted
   `consent`. It is silent on IPv6 in `device.ip`, duplicate impression ids, an empty request
-  id and a negative banner width.
+  id, a negative banner width and the three geo code formats.
 - The serde parsers catch a wrong JSON type (`"1.50"` as money, `"USD"` instead of `["USD"]`)
   and almost nothing semantic. `openrtb26` accepts every request; `iab-specs-openrtb` adds two
   type checks.

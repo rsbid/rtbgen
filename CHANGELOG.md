@@ -20,10 +20,12 @@ has been released yet, so there is no second corpus contract.
   **exactly one** deliberate OpenRTB violation. `percent(0)` is byte-identical to not calling
   the knob, `percent(100)` always mutates, and the mutation is drawn after the profile body, so
   a request without a mutation keeps the plain bytes.
-- `Mutation`, the closed set of 25 defects: auction-type bounds, `bidfloor` as a string, invalid
+- `Mutation`, the closed set of 28 defects: auction-type bounds, `bidfloor` as a string, invalid
   `bidfloorcur`, IPv6 `device.ip`, empty/blank/non-ASCII request ids, `site` plus `app`,
   over-cap and 10 000-impression bodies, duplicate `imp[].id`, `tmax` 120000/0/absent, missing or
-  dotted `consent`, negative or missing banner size, deeply nested `ext`, and wrong-shaped `cur`.
+  dotted `consent`, negative or missing banner size, deeply nested `ext`, wrong-shaped `cur`,
+  and the three geo code formats (`country` alpha-2, `city` name, `region` without its country
+  prefix).
   `Mutation::ALL` lists the set and `Request::mutation()` names the defect a request carries.
 - `Request::from_entropy_with(profile, spec, rate, entropy)` for a custom deterministic source.
 - `--degrade <PERCENT>` in the CLI, accepting `5` and `5%`.
@@ -48,6 +50,9 @@ has been released yet, so there is no second corpus contract.
 - `degrade(100)` no longer selects a mutation the request cannot carry: `TmaxMissing` requires
   a `tmax` and `ConsentMissing` requires a `consent`. Requests without those fields can select
   a different mutation than before; non-degraded bytes are unchanged.
+- Three geo mutations join the set: `geo_country_alpha2`, `geo_city_name` and
+  `geo_region_without_country`. The set grows from 25 to 28, so a seed can select a different
+  defect than before; `corpus/v1` is regenerated in place.
 - The corpus is regenerated in `corpus/v1`. There is no `corpus/v2`: the crate has not been
   released, so the initial contract is the only one. Regenerate `insta` snapshots: every existing
   `(spec, profile, seed, knobs)` tuple produced new bytes.

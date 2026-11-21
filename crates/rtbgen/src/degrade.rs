@@ -126,6 +126,12 @@ pub enum Mutation {
     CurrenciesAsString,
     /// `cur: ["US1"]`, a code that is not a currency.
     CurrenciesInvalidCode,
+    /// `device.geo.country: "RU"`, an alpha-2 code instead of ISO-3166-1 alpha-3.
+    GeoCountryAlpha2,
+    /// `device.geo.city: "Moscow"`, a city name instead of a UN/LOCODE.
+    GeoCityName,
+    /// `device.geo.region: "MOW"`, an ISO-3166-2 subdivision without its country prefix.
+    GeoRegionWithoutCountry,
 }
 
 impl Mutation {
@@ -160,6 +166,9 @@ impl Mutation {
         Self::DeepExt,
         Self::CurrenciesAsString,
         Self::CurrenciesInvalidCode,
+        Self::GeoCountryAlpha2,
+        Self::GeoCityName,
+        Self::GeoRegionWithoutCountry,
     ];
 
     /// The stable name used by the corpus manifest and the command line.
@@ -191,6 +200,9 @@ impl Mutation {
             Self::DeepExt => "deep_ext",
             Self::CurrenciesAsString => "currencies_as_string",
             Self::CurrenciesInvalidCode => "currencies_invalid_code",
+            Self::GeoCountryAlpha2 => "geo_country_alpha2",
+            Self::GeoCityName => "geo_city_name",
+            Self::GeoRegionWithoutCountry => "geo_region_without_country",
         }
     }
 
@@ -201,6 +213,9 @@ impl Mutation {
     fn applies(self, model: &RequestModel, spec: SpecVersion) -> bool {
         match self {
             Self::DeviceIpv6 => model.device().is_some(),
+            Self::GeoCountryAlpha2 | Self::GeoCityName | Self::GeoRegionWithoutCountry => {
+                model.device().is_some_and(|device| device.geo().is_some())
+            }
             Self::ConsentMissing => {
                 spec.is_v26() && model.user().is_some_and(|user| user.consent().is_some())
             }
@@ -294,6 +309,21 @@ impl Mutation {
             Self::CurrenciesInvalidCode => {
                 model.set_cur(Currencies::Raw(RawJson::from_static(r#"["US1"]"#)));
             }
+            Self::GeoCountryAlpha2 => {
+                if let Some(geo) = first_geo(model) {
+                    geo.set_country(Some("RU"));
+                }
+            }
+            Self::GeoCityName => {
+                if let Some(geo) = first_geo(model) {
+                    geo.set_city(Some("Moscow"));
+                }
+            }
+            Self::GeoRegionWithoutCountry => {
+                if let Some(geo) = first_geo(model) {
+                    geo.set_region(Some("MOW"));
+                }
+            }
         }
     }
 }
@@ -348,6 +378,11 @@ fn has_banner(model: &RequestModel) -> bool {
 /// Returns the banner of the first impression that has one.
 fn first_banner(model: &mut RequestModel) -> Option<&mut crate::wire::Banner> {
     model.impressions_mut().iter_mut().find_map(Imp::banner_mut)
+}
+
+/// Returns the device geo location, when the request has one.
+fn first_geo(model: &mut RequestModel) -> Option<&mut crate::wire::Geo> {
+    model.device_mut()?.geo_mut()
 }
 
 /// Returns how many base impressions the request carries.
@@ -471,6 +506,9 @@ mod tests {
             (Mutation::BannerNegativeSize, "/imp/0/banner/w"),
             (Mutation::DeepExt, "/ext"),
             (Mutation::CurrenciesAsString, "/cur"),
+            (Mutation::GeoCountryAlpha2, "/device/geo/country"),
+            (Mutation::GeoCityName, "/device/geo/city"),
+            (Mutation::GeoRegionWithoutCountry, "/device/geo/region"),
         ];
 
         let mut entropy = RngEntropy::from_seed(Seed::new(3));
@@ -484,6 +522,28 @@ mod tests {
                 before.pointer(path),
                 after.pointer(path),
                 "{mutation} did not change {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn geo_mutations_emit_the_invalid_legacy_formats() {
+        let mut entropy = RngEntropy::from_seed(Seed::new(5));
+        let cases = [
+            (Mutation::GeoCountryAlpha2, "/device/geo/country", "RU"),
+            (Mutation::GeoCityName, "/device/geo/city", "Moscow"),
+            (Mutation::GeoRegionWithoutCountry, "/device/geo/region", "MOW"),
+        ];
+
+        for (mutation, path, expected) in cases {
+            let mut model = maximal();
+            mutation.apply_to(&mut model, &mut entropy);
+            let value = value(&model, SpecVersion::V26);
+
+            assert_eq!(
+                value.pointer(path).and_then(serde_json::Value::as_str),
+                Some(expected),
+                "{mutation} did not write the legacy format at {path}"
             );
         }
     }

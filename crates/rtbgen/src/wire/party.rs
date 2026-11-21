@@ -241,6 +241,16 @@ setters!(Device {
 });
 
 impl Device {
+    /// Returns the geo location, when the profile emitted one.
+    pub(crate) const fn geo(&self) -> Option<&Geo> {
+        self.geo.as_ref()
+    }
+
+    /// Returns the geo location for mutation, when the profile emitted one.
+    pub(crate) const fn geo_mut(&mut self) -> Option<&mut Geo> {
+        self.geo.as_mut()
+    }
+
     pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
         option_string(f, "ua", self.ua)?;
         option_string(f, "ip", self.ip)?;

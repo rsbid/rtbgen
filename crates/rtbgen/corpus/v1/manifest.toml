@@ -199,7 +199,7 @@ spec = "2.6"
 profile = "site_display"
 seed = 35
 degrade = 100
-mutation = "bid_floor_as_string"
+mutation = "bid_floor_currency_unknown"
 
 [[request]]
 name = "degrade-site-video-v25-5"
@@ -207,7 +207,7 @@ spec = "2.5"
 profile = "site_video"
 seed = 5
 degrade = 100
-mutation = "bid_floor_currency_empty"
+mutation = "device_ipv6"
 
 [[request]]
 name = "degrade-sparse-v26-8"
