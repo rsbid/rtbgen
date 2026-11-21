@@ -45,7 +45,8 @@ has been released yet, so there is no second corpus contract.
   so `Maximal` loses it under `V25` and keeps it under `V26`.
 - `device.geo.country` is an ISO-3166-1 alpha-3 code (`RUS`, `USA`, `DEU`, `GBR`), not alpha-2.
 - `device.geo.city` is a UN/LOCODE (`RUMOW`, `USNYC`, `DEBER`, `GBLON`), not a city name.
-- `device.geo.region` is the full ISO-3166-2 code (`RU-MOW`, `US-NY`, `DE-BE`, `GB-ENG`).
+- `device.geo.region` uses ISO-3166-2, with the 2-letter state code for the USA as the spec
+  requires (`RU-MOW`, `NY`, `DE-BE`, `GB-ENG`).
 - `source.pchain` is a valid TAG Payment ID chain (`XYZ01234:ABCD56789`), not `pchain-1`.
 - `degrade(100)` no longer selects a mutation the request cannot carry: `TmaxMissing` requires
   a `tmax` and `ConsentMissing` requires a `consent`. Requests without those fields can select

@@ -102,7 +102,7 @@ pub(super) const DEFAULT_IFA: &str = "A1B2C3D4-0000-4000-8000-000000000001";
 pub(super) const IFAS: &[&str] = &[DEFAULT_IFA, "A1B2C3D4-0000-4000-8000-000000000002"];
 pub(super) const GEOS: &[(&str, &str, &str, &str)] = &[
     ("RUS", "RU-MOW", "RUMOW", "101000"),
-    ("USA", "US-NY", "USNYC", "10001"),
+    ("USA", "NY", "USNYC", "10001"),
     ("DEU", "DE-BE", "DEBER", "10115"),
     ("GBR", "GB-ENG", "GBLON", "EC1A"),
 ];

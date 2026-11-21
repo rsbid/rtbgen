@@ -215,9 +215,9 @@ The 0.3 release adds the `degrade` knob and its mutation table, and fixes the fi
 matrix and the OpenRTB 2.6 audit caught: `device.ifa` (not the non-spec `idfa`), the Native
 Markup Request root, `skipmin`/`skipafter` only with `skip`, `gpp_sid` only with `gpp`, no
 `source.schain.nodes[].n`, `source.schain` only under 2.6, and standard code lists for
-`device.geo.country` (ISO-3166-1 alpha-3),
-`device.geo.region` (ISO-3166-2), `device.geo.city` (UN/LOCODE) and `source.pchain` (TAG Payment
-ID). Existing snapshots must be regenerated; `corpus/v1` is regenerated in place because no
+`device.geo.country` (ISO-3166-1 alpha-3), `device.geo.region` (ISO-3166-2, 2-letter state code
+for the USA), `device.geo.city` (UN/LOCODE) and `source.pchain` (TAG Payment ID). Existing
+snapshots must be regenerated; `corpus/v1` is regenerated in place because no
 version has been released. The `arbitrary` adapter now draws a degrade rate, which changes its
 byte mapping too. After a period without behaviour changes, 1.0 freezes the API and the bytes.
 

@@ -490,23 +490,37 @@ mod tests {
                 "{country} is not an ISO-3166-1 alpha-3 code"
             );
 
-            let mut parts = region.split('-');
-            let prefix = parts.next();
-            let subdivision = parts.next();
-            assert!(parts.next().is_none(), "{region} has more than one hyphen");
-            assert_eq!(prefix, city.get(..2), "{region} and {city} disagree on the country prefix");
-            assert!(
-                subdivision.is_some_and(|code| code
-                    .bytes()
-                    .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())),
-                "{region} is not an ISO-3166-2 code"
-            );
-
             assert_eq!(city.len(), 5, "{city} is not a UN/LOCODE");
             assert!(
                 city.bytes().skip(2).all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()),
                 "{city} is not a UN/LOCODE"
             );
+
+            if country == "USA" {
+                // OpenRTB asks for the 2-letter state code for the USA, not the full ISO-3166-2 code.
+                assert_eq!(region.len(), 2, "{region} is not a 2-letter US state code");
+                assert!(
+                    region.bytes().all(|byte| byte.is_ascii_uppercase()),
+                    "{region} is not a 2-letter US state code"
+                );
+                assert_eq!(city.get(..2), Some("US"), "{city} is not a US UN/LOCODE");
+            } else {
+                let mut parts = region.split('-');
+                let prefix = parts.next();
+                let subdivision = parts.next();
+                assert!(parts.next().is_none(), "{region} has more than one hyphen");
+                assert_eq!(
+                    prefix,
+                    city.get(..2),
+                    "{region} and {city} disagree on the country prefix"
+                );
+                assert!(
+                    subdivision.is_some_and(|code| code
+                        .bytes()
+                        .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())),
+                    "{region} is not an ISO-3166-2 code"
+                );
+            }
         }
     }
 }
