@@ -198,20 +198,26 @@ pub(super) fn build_app_device(
 
 /// Builds the user, or nothing for the requests that carry no user.
 pub(super) fn build_user(rng: &mut impl Entropy, privacy: Scenario) -> Option<User> {
-    if !privacy.allows_identifiers() {
+    let consent = privacy.consent();
+    let identifiers = privacy.allows_identifiers();
+
+    if !identifiers && consent.is_none() {
         return None;
     }
-
-    let has_consent = privacy.consent().is_some();
-    if !has_consent && !rng.bit(Share::percent(70)) {
+    if identifiers && consent.is_none() && !rng.bit(Share::percent(70)) {
         return None;
     }
 
     let mut user = User::default();
-    user.set_id(Some(UserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
-    user.set_buyeruid(Some(BuyerUserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
-    user.set_consent(privacy.consent());
-    user.set_ext(rng.bit(Share::percent(30)).then_some(USER_EXT));
+
+    if identifiers {
+        user.set_id(Some(UserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
+        user.set_buyeruid(Some(BuyerUserId::new(u64::from(rng.u32(Span::from_zero(999_999))))));
+        user.set_ext(rng.bit(Share::percent(30)).then_some(USER_EXT));
+    }
+
+    user.set_consent(consent);
+    user.set_legacy_consent(consent);
     Some(user)
 }
 
@@ -226,6 +232,7 @@ pub(super) fn build_regs(privacy: Scenario, country: &str) -> Option<Regs> {
 
     if let Some(gdpr) = privacy.gdpr() {
         regs.set_gdpr(Some(gdpr));
+        regs.set_legacy_gdpr(Some(gdpr));
     }
 
     if privacy.consent().is_some() {
@@ -236,6 +243,7 @@ pub(super) fn build_regs(privacy: Scenario, country: &str) -> Option<Regs> {
 
     if privacy.has_us_privacy(country) {
         regs.set_ext(Some(REGS_EXT));
+        regs.set_legacy_us_privacy(Some("1YNN"));
     }
 
     Some(regs)

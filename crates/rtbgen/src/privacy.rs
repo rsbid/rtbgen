@@ -3,8 +3,11 @@
 //! A scenario fixes the whole privacy shape of a request instead of drawing
 //! `regs`, `user.consent` and `regs.gpp` independently, so the emitted fields
 //! stay consistent: a TC string always travels with `regs.gdpr=1`, a `GPP`
-//! string always carries the same TC string in its TCF EU v2 section, and
-//! `coppa=1` never carries identifiers.
+//! string always carries the same TC string in its TCF EU v2 section, and,
+//! when GDPR applies, a request carries storage identifiers only with a
+//! positive consent signal. That rules out `device.ifa`, `user.id` and
+//! `user.buyeruid` for `coppa=1`, a denied TC string and a request without
+//! consent.
 //!
 //! The profiles that draw a request body draw a scenario from the seed; the
 //! `Sparse` and `Maximal` profiles use a fixed privacy shape. [`Privacy`] lets
@@ -61,15 +64,17 @@ pub enum Privacy {
     ///
     /// Under `OpenRTB` 2.6 the matching `regs.gpp` and `regs.gpp_sid` are
     /// emitted as well, so the two transports carry the same string. 2.5 has
-    /// no `user.consent`, `regs.gdpr`, `regs.gpp` or `regs.gpp_sid`, so the
-    /// writer only changes the request location and emits `regs.coppa=0`.
+    /// no first-class `user.consent` or `regs.gdpr`, so the signals travel in
+    /// the legacy `user.ext.consent` and `regs.ext.gdpr` fields, as 2.6
+    /// records them. A denied consent string carries no storage identifiers.
     Gdpr {
         /// The consent value of the emitted TC string.
         consent: Consent,
     },
     /// `regs.coppa=0`, `regs.gdpr=1` and no TC string: the request arrives
-    /// without consent, which a bidder must handle. Under `OpenRTB` 2.5 the
-    /// writer omits `regs.gdpr`, so only `regs.coppa=0` remains.
+    /// without consent, which a bidder must handle. It carries no storage
+    /// identifiers, and under `OpenRTB` 2.5 the flag travels in
+    /// `regs.ext.gdpr` with the rest of the request unchanged.
     GdprWithoutConsent,
 }
 

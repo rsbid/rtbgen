@@ -72,11 +72,13 @@ disabled, or COPPA); `.privacy()` replaces it on any profile. The CLI takes the 
 - `Privacy::Gdpr { consent }` emits a syntactically valid TCF v2.2 TC string
   (`TcfPolicyVersion=4`, `IsServiceSpecific=1`, a terminated vendor section; `CmpId=0` marks it
   as a synthetic fixture), the matching `regs.gpp` and `gpp_sid`, and a location in the EU/UK.
-  Under `OpenRTB` 2.5 those fields do not exist, so only the location and `regs.coppa=0` remain.
+  Under `OpenRTB` 2.5 the first-class fields do not exist, so the TC string and the flag travel
+  in `user.ext.consent` and `regs.ext.gdpr`, the legacy locations 2.6 promoted. A denied string
+  carries no storage identifiers: `device.ifa`, `user.id` and `user.buyeruid` are absent.
 - `Privacy::Coppa` emits `coppa=1` with a US location, no `user`, no `device.ifa`, no
   `device.ip` and no precise location.
 - `Privacy::GdprWithoutConsent` is `gdpr=1` with no TC string, the case a bidder must handle;
-  under 2.5 the `gdpr` field is omitted too.
+  it carries no storage identifiers. Under 2.5 the flag is in `regs.ext.gdpr`.
 - `Privacy::GdprDisabled` and `Privacy::None` use non-EU locations on profiles with a device; the legacy
   `regs.ext.us_privacy` string appears only for a US request. `Privacy::ALL`, `name()` and
   `from_name()` are the stable set used by the CLI and the corpus manifest.
@@ -114,16 +116,17 @@ carries. A mutation never breaks JSON: it breaks OpenRTB.
 ## Parser check
 
 The mutation table was measured, not guessed. On 2026-11-21, `rtbgen` 0.3.0 generated 180
-requests (nine profiles, both revisions, ten seeds each) and one sample per mutation. Each
-implementation below parsed every request; a mutation counts as detected only when the same
-profile, revision and seed was **accepted** before the mutation and **rejected** after it.
+requests (nine profiles, both revisions, ten seeds each) and one accepted baseline per mutation
+and implementation, searched over seeds 0..=499. Each implementation below parsed every request;
+a mutation counts as detected only when its baseline was **accepted** before the mutation and
+**rejected** after it.
 
 | Implementation | Version | Valid requests accepted | Defects detected |
 |---|---|---|---|
 | [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 180/180 | 7/28 |
 | [`openrtb26`](https://crates.io/crates/openrtb26) | 0.1.1 | 180/180 | 2/28 |
 | [`iab-specs-openrtb`](https://crates.io/crates/iab-specs-openrtb) | 0.5.1 | 132/180 | 2/28 |
-| [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 2/11 |
+| [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 4/26 |
 
 Read the table as a map of the layer each tool checks:
 
@@ -133,12 +136,12 @@ Read the table as a map of the layer each tool checks:
   `consent`. It is silent on IPv6 in `device.ip`, duplicate impression ids, an empty request
   id, a negative banner width and the three geo code formats.
 - The serde parsers catch a wrong JSON type (`"1.50"` as money, `"USD"` instead of `["USD"]`)
-  and almost nothing semantic. `openrtb26` accepts every request; `iab-specs-openrtb` adds two
-  type checks.
+  and little else. `openrtb26` accepts every request; `iab-specs-openrtb` adds two type checks;
+  `openrtb` also rejects a missing `tmax` and a negative banner size.
 - `rtblint-core` accepts all 180 valid requests; the gaps in its detection column are the
   semantic checks listed above, not missing fields.
 - `openrtb` 0.2.1 rejects 170 of the 180 valid requests because its `User.data` has no serde
-  default; its detection column covers the 11 mutations whose baseline it could parse.
+  default; its detection column covers the 26 mutations whose baseline it could parse.
   `iab-specs-openrtb` 0.5.1 reads nested `ext` and `pmp` as `Vec<u8>`, so map-valued extensions
   fail there regardless of validity.
 

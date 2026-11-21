@@ -6,7 +6,8 @@ use crate::ids::{AppId, BuyerUserId, PublisherId, SiteId, UserId};
 use crate::raw::RawJson;
 use crate::version::SpecVersion;
 use crate::write::{
-    Object, object_field, option_id, option_number, option_raw, option_string, option_string_array,
+    Object, field_string, object_field, option_id, option_number, option_raw, option_string,
+    option_string_array,
 };
 
 /// A website.
@@ -341,6 +342,7 @@ pub(crate) struct User {
     id: Option<UserId>,
     buyeruid: Option<BuyerUserId>,
     consent: Option<&'static str>,
+    legacy_consent: Option<&'static str>,
     ext: Option<RawJson>,
 }
 
@@ -348,6 +350,7 @@ setters!(User {
     set_id => id: Option<UserId>,
     set_buyeruid => buyeruid: Option<BuyerUserId>,
     set_consent => consent: Option<&'static str>,
+    set_legacy_consent => legacy_consent: Option<&'static str>,
     set_ext => ext: Option<RawJson>,
 });
 
@@ -355,6 +358,20 @@ impl User {
     /// Returns the TCF consent string, when the profile emitted one.
     pub(crate) const fn consent(&self) -> Option<&'static str> {
         self.consent
+    }
+
+    /// Returns the 2.5 `ext.consent` string, when the profile emitted one.
+    pub(crate) const fn legacy_consent(&self) -> Option<&'static str> {
+        self.legacy_consent
+    }
+
+    /// Returns whether the user would write an empty object.
+    pub(crate) const fn is_empty(&self) -> bool {
+        self.id.is_none()
+            && self.buyeruid.is_none()
+            && self.consent.is_none()
+            && self.legacy_consent.is_none()
+            && self.ext.is_none()
     }
 
     pub(crate) fn write<W: fmt::Write>(
@@ -367,6 +384,13 @@ impl User {
 
         if spec.is_v26() {
             option_string(f, "consent", self.consent)?;
+
+            return option_raw(f, "ext", self.ext);
+        }
+
+        // OpenRTB 2.5 carried `consent` in `user.ext`; 2.6 promoted it.
+        if let Some(consent) = self.legacy_consent {
+            return object_field(f, "ext", |f| field_string(f, "consent", consent));
         }
 
         option_raw(f, "ext", self.ext)
@@ -377,6 +401,7 @@ impl User {
             id: Some(UserId::new(4)),
             buyeruid: Some(BuyerUserId::new(5)),
             consent: Some(crate::privacy::TCF_CONSENT_GRANTED),
+            legacy_consent: Some(crate::privacy::TCF_CONSENT_GRANTED),
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }
     }

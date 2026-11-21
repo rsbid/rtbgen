@@ -11,7 +11,6 @@ use crate::flag::Flag;
 use crate::ids::DealId;
 use crate::money::Money;
 use crate::rng::{Entropy, Share};
-use crate::version::SpecVersion;
 use crate::wire::{Deal, DealList, Pmp, RequestModel, User, WireCurrency, WireNumber};
 
 use super::Config;
@@ -64,7 +63,7 @@ pub(super) fn build_fixed_deals(count: u8) -> DealList {
 /// Applies the configured knobs to a generated model.
 pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
     if let Some(privacy) = config.privacy() {
-        apply_privacy(model, Scenario::from_privacy(privacy), config.spec_version());
+        apply_privacy(model, Scenario::from_privacy(privacy));
     }
 
     if let Some(floor) = config.floor() {
@@ -86,7 +85,7 @@ pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
 ///
 /// The override is deterministic: the location is the first location of the
 /// scenario's scope, so the knob does not depend on the location the seed drew.
-fn apply_privacy(model: &mut RequestModel, privacy: Scenario, spec: SpecVersion) {
+fn apply_privacy(model: &mut RequestModel, privacy: Scenario) {
     let location = privacy.geos().first().copied().unwrap_or(DEFAULT_GEO);
 
     if let Some(device) = model.device_mut() {
@@ -103,21 +102,32 @@ fn apply_privacy(model: &mut RequestModel, privacy: Scenario, spec: SpecVersion)
     }
 
     match privacy {
-        Scenario::Coppa => model.set_user(None),
+        Scenario::Coppa | Scenario::GdprNoConsent => model.set_user(None),
         Scenario::Gdpr { .. } => {
+            let consent = privacy.consent();
             if let Some(user) = model.user_mut() {
-                user.set_consent(privacy.consent());
-            } else if spec.is_v26() {
-                let mut user = User::default();
-                user.set_consent(privacy.consent());
-                model.set_user(Some(user));
+                if !privacy.allows_identifiers() {
+                    user.set_id(None);
+                    user.set_buyeruid(None);
+                    user.set_ext(None);
+                }
+                user.set_consent(consent);
+                user.set_legacy_consent(consent);
             } else {
-                // 2.5 has no `user.consent` field, so there is nothing to add.
+                let mut user = User::default();
+                user.set_consent(consent);
+                user.set_legacy_consent(consent);
+                model.set_user(Some(user));
             }
         }
-        Scenario::None | Scenario::GdprDisabled | Scenario::GdprNoConsent => {
-            if let Some(user) = model.user_mut() {
+        Scenario::None | Scenario::GdprDisabled => {
+            let empty = model.user_mut().is_some_and(|user| {
                 user.set_consent(None);
+                user.set_legacy_consent(None);
+                user.is_empty()
+            });
+            if empty {
+                model.set_user(None);
             }
         }
     }

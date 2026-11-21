@@ -199,7 +199,7 @@ spec = "2.6"
 profile = "site_display"
 seed = 35
 degrade = 100
-mutation = "bid_floor_as_string"
+mutation = "auction_type_exchange_specific"
 
 [[request]]
 name = "degrade-site-video-v25-5"
@@ -207,7 +207,7 @@ spec = "2.5"
 profile = "site_video"
 seed = 5
 degrade = 100
-mutation = "duplicate_imp_ids"
+mutation = "tmax_high"
 
 [[request]]
 name = "degrade-sparse-v26-8"
@@ -294,4 +294,4 @@ profile = "site_display"
 seed = 35
 privacy = "gdpr_denied"
 degrade = 100
-mutation = "bid_floor_as_string"
+mutation = "auction_type_exchange_specific"

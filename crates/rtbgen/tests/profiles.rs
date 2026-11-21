@@ -5,8 +5,6 @@
 use rtbgen::{Profile, Request, Seed, SpecVersion};
 use serde_json::Value;
 
-const SPEC_FIELDS: [&str; 7] = ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid", "schain"];
-
 fn render(profile: Profile, spec: SpecVersion, seed: u64) -> Value {
     let text = Request::builder(profile).seed(Seed::new(seed)).spec(spec).build().to_json_string();
 
@@ -221,6 +219,16 @@ fn maximal_covers_every_writable_field() {
 
 #[test]
 fn v25_drops_exactly_the_26_fields() {
+    let first_class = [
+        "/imp/0/rwdd",
+        "/imp/0/ssai",
+        "/user/consent",
+        "/regs/gdpr",
+        "/regs/gpp",
+        "/regs/gpp_sid",
+        "/source/schain",
+    ];
+
     for profile in Profile::ALL {
         let v26 = Request::builder(profile).seed(Seed::new(42)).build().to_json_string();
         let v25 = Request::builder(profile)
@@ -229,25 +237,42 @@ fn v25_drops_exactly_the_26_fields() {
             .build()
             .to_json_string();
 
-        for field in SPEC_FIELDS {
-            let quoted = std::format!("\"{field}\"");
-            assert!(!v25.contains(&quoted), "{profile}: {field} leaked into 2.5");
+        let mut expected: Value = serde_json::from_str(&v26).expect("2.6 is valid JSON");
+        let mut actual: Value = serde_json::from_str(&v25).expect("2.5 is valid JSON");
+
+        for path in first_class {
+            assert!(actual.pointer(path).is_none(), "{profile}: {path} leaked into 2.5");
         }
 
-        let mut expected: Value = serde_json::from_str(&v26).expect("2.6 is valid JSON");
-        for path in [
-            "/imp/0/rwdd",
-            "/imp/0/ssai",
-            "/user/consent",
-            "/regs/gdpr",
-            "/regs/gpp",
-            "/regs/gpp_sid",
-            "/source/schain",
-        ] {
+        // The same signals travel in `ext` under 2.5, where 2.6 promoted them.
+        if let Some(gdpr) = expected.pointer("/regs/gdpr") {
+            assert_eq!(actual.pointer("/regs/ext/gdpr"), Some(gdpr), "{profile}: gdpr ext");
+        }
+        if let Some(consent) = expected.pointer("/user/consent") {
+            assert_eq!(
+                actual.pointer("/user/ext/consent"),
+                Some(consent),
+                "{profile}: consent ext"
+            );
+        }
+        if let Some(us_privacy) = expected.pointer("/regs/ext/us_privacy") {
+            assert_eq!(
+                actual.pointer("/regs/ext/us_privacy"),
+                Some(us_privacy),
+                "{profile}: US Privacy"
+            );
+        }
+
+        for path in first_class {
             remove_path(&mut expected, path);
         }
 
-        let actual: Value = serde_json::from_str(&v25).expect("2.5 is valid JSON");
+        // `ext` is the transport that differs between the revisions.
+        for path in ["/user/ext", "/regs/ext"] {
+            remove_path(&mut expected, path);
+            remove_path(&mut actual, path);
+        }
+
         assert_eq!(actual, expected, "{profile}");
     }
 }

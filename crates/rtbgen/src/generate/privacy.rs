@@ -121,9 +121,16 @@ impl Scenario {
         }
     }
 
-    /// Returns whether a child-directed request must omit identifiers.
+    /// Returns whether the request may carry storage identifiers.
+    ///
+    /// Under GDPR an identifier requires a positive consent signal: a denied
+    /// TC string and a request without consent both forbid `device.ifa`,
+    /// `user.id` and `user.buyeruid`.
     pub(super) const fn allows_identifiers(self) -> bool {
-        !matches!(self, Self::Coppa)
+        !matches!(
+            self,
+            Self::Coppa | Self::Gdpr { consent: Consent::Denied, .. } | Self::GdprNoConsent
+        )
     }
 
     /// Returns whether the device may carry an address.

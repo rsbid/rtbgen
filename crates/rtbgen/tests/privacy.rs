@@ -33,6 +33,33 @@ fn number(value: &Value, path: &str) -> Option<u64> {
     value.pointer(path).and_then(Value::as_u64)
 }
 
+/// Returns the GDPR flag of the revision: first-class in 2.6, `ext` in 2.5.
+fn gdpr(value: &Value, spec: SpecVersion) -> Option<u64> {
+    match spec {
+        SpecVersion::V25 => number(value, "/regs/ext/gdpr"),
+        SpecVersion::V26 => number(value, "/regs/gdpr"),
+    }
+}
+
+/// Returns the TC string of the revision: first-class in 2.6, `ext` in 2.5.
+fn consent(value: &Value, spec: SpecVersion) -> Option<&str> {
+    match spec {
+        SpecVersion::V25 => text(value, "/user/ext/consent"),
+        SpecVersion::V26 => text(value, "/user/consent"),
+    }
+}
+
+/// Returns whether the request carries a storage identifier.
+fn has_storage_identifiers(value: &Value) -> bool {
+    value.pointer("/device/ifa").is_some()
+        || text(value, "/user/id").is_some()
+        || text(value, "/user/buyeruid").is_some()
+        || value
+            .pointer("/user/ext/eids")
+            .and_then(Value::as_array)
+            .is_some_and(|eids| !eids.is_empty())
+}
+
 fn utcoffset(country: &str) -> i64 {
     match country {
         "RUS" => 180,
@@ -57,9 +84,10 @@ fn language(country: &str) -> &'static str {
 /// Checks the invariants that hold for every request, however it was built.
 fn check(value: &Value, spec: SpecVersion) {
     check_location(value);
-    check_consent_transport(value);
-    check_gdpr_location(value);
-    check_coppa(value);
+    check_consent_transport(value, spec);
+    check_gdpr_location(value, spec);
+    check_identifiers(value, spec);
+    check_coppa(value, spec);
     check_regs(value, spec);
     check_us_privacy(value);
 }
@@ -79,18 +107,23 @@ fn check_location(value: &Value) {
     assert!(tag == Some("en") || tag == Some(language(country)), "{country} speaks {tag:?}");
 }
 
-fn check_consent_transport(value: &Value) {
-    let consent = text(value, "/user/consent");
+fn check_consent_transport(value: &Value, spec: SpecVersion) {
+    let consent = consent(value, spec);
 
     if consent.is_some() {
-        assert_eq!(number(value, "/regs/gdpr"), Some(1), "consent without `regs.gdpr=1`");
+        assert_eq!(gdpr(value, spec), Some(1), "consent without `gdpr=1`");
+    }
+
+    if spec != SpecVersion::V26 {
+        assert!(value.pointer("/regs/gpp").is_none(), "GPP leaked into OpenRTB 2.5");
+        return;
     }
 
     let Some(section) = text(value, "/regs/gpp") else {
         return;
     };
 
-    assert_eq!(number(value, "/regs/gdpr"), Some(1), "GPP without `regs.gdpr=1`");
+    assert_eq!(gdpr(value, spec), Some(1), "GPP without `gdpr=1`");
     assert_eq!(number(value, "/regs/gpp_sid/0"), Some(2), "missing TCF section id");
     assert_eq!(
         section.split_once('~').map(|(_, payload)| payload),
@@ -99,11 +132,26 @@ fn check_consent_transport(value: &Value) {
     );
 }
 
-fn check_gdpr_location(value: &Value) {
+fn check_identifiers(value: &Value, spec: SpecVersion) {
+    let coppa = number(value, "/regs/coppa");
+    let gdpr = gdpr(value, spec);
+    let consent = consent(value, spec);
+    let positive_consent = consent == Some(consent_string(true));
+    let identifiers_allowed = coppa != Some(1) && (gdpr != Some(1) || positive_consent);
+
+    if !identifiers_allowed {
+        assert!(
+            !has_storage_identifiers(value),
+            "storage identifiers without a positive consent signal"
+        );
+    }
+}
+
+fn check_gdpr_location(value: &Value, spec: SpecVersion) {
     let Some(country) = text(value, "/device/geo/country") else {
         return;
     };
-    let Some(gdpr) = number(value, "/regs/gdpr") else {
+    let Some(gdpr) = gdpr(value, spec) else {
         return;
     };
 
@@ -115,7 +163,7 @@ fn check_gdpr_location(value: &Value) {
     }
 }
 
-fn check_coppa(value: &Value) {
+fn check_coppa(value: &Value, spec: SpecVersion) {
     if number(value, "/regs/coppa") != Some(1) {
         return;
     }
@@ -138,28 +186,23 @@ fn check_coppa(value: &Value) {
         assert!(value.pointer(path).is_none(), "COPPA kept {path}");
     }
 
-    assert_eq!(number(value, "/regs/gdpr"), None, "COPPA and GDPR are mutually exclusive");
-    assert!(text(value, "/user/consent").is_none(), "COPPA request carried consent");
+    assert_eq!(gdpr(value, spec), None, "COPPA and GDPR are mutually exclusive");
+    assert!(consent(value, spec).is_none(), "COPPA request carried consent");
     assert!(text(value, "/regs/gpp").is_none(), "COPPA request carried GPP");
 }
 
 fn check_regs(value: &Value, spec: SpecVersion) {
     if value.get("regs").is_none() {
-        assert!(text(value, "/user/consent").is_none(), "consent without `regs`");
+        assert!(consent(value, spec).is_none(), "consent without `regs`");
         assert!(text(value, "/regs/gpp").is_none(), "GPP without `regs`");
         return;
     }
 
-    if spec != SpecVersion::V26 {
+    if number(value, "/regs/coppa") == Some(1) {
         return;
     }
 
-    let coppa = number(value, "/regs/coppa");
-    assert!(coppa.is_some(), "2.6 `regs` must carry `coppa`");
-
-    if coppa != Some(1) {
-        assert!(number(value, "/regs/gdpr").is_some(), "2.6 `regs` must carry `gdpr`");
-    }
+    assert!(gdpr(value, spec).is_some(), "`regs` must carry the GDPR flag");
 }
 
 fn check_us_privacy(value: &Value) {
@@ -228,18 +271,20 @@ fn check_knob(value: &Value, spec: SpecVersion, privacy: Privacy) {
             assert!(value.pointer("/device/ifa").is_none(), "COPPA kept the advertising id");
             assert!(value.pointer("/device/ip").is_none(), "COPPA kept the address");
         }
-        Privacy::Gdpr { consent } if spec == SpecVersion::V26 => {
-            let expected = consent_string(consent == Consent::Granted);
-            assert_eq!(text(value, "/user/consent"), Some(expected), "the TC string differs");
-            assert_eq!(
-                text(value, "/regs/gpp").and_then(|gpp| gpp.split_once('~')),
-                Some(("DBABM", expected)),
-                "the GPP section differs from the TC string"
-            );
+        Privacy::Gdpr { consent: expected } => {
+            let expected = consent_string(expected == Consent::Granted);
+            assert_eq!(consent(value, spec), Some(expected), "the TC string differs");
+
+            if spec == SpecVersion::V26 {
+                assert_eq!(
+                    text(value, "/regs/gpp").and_then(|gpp| gpp.split_once('~')),
+                    Some(("DBABM", expected)),
+                    "the GPP section differs from the TC string"
+                );
+            }
         }
-        Privacy::Gdpr { .. } => {}
         Privacy::GdprWithoutConsent | Privacy::GdprDisabled | Privacy::None => {
-            assert!(text(value, "/user/consent").is_none(), "{privacy:?} carried consent");
+            assert!(consent(value, spec).is_none(), "{privacy:?} carried consent");
             assert!(text(value, "/regs/gpp").is_none(), "{privacy:?} carried GPP");
         }
     }
@@ -271,13 +316,7 @@ fn check_case(value: &Value, profile: Profile, spec: SpecVersion, privacy: Priva
             "{profile} {privacy:?} {spec}"
         );
     }
-    if spec == SpecVersion::V26 {
-        assert_eq!(
-            number(value, "/regs/gdpr"),
-            expected_gdpr(privacy),
-            "{profile} {privacy:?} {spec}"
-        );
-    }
+    assert_eq!(gdpr(value, spec), expected_gdpr(privacy), "{profile} {privacy:?} {spec}");
 }
 
 #[test]
@@ -316,4 +355,43 @@ fn the_privacy_knob_is_coherent_on_every_profile() {
             }
         }
     }
+}
+
+#[test]
+fn a_denied_or_absent_consent_carries_no_storage_identifiers() {
+    for spec in SpecVersion::ALL {
+        for privacy in [Privacy::Gdpr { consent: Consent::Denied }, Privacy::GdprWithoutConsent] {
+            for profile in Profile::ALL {
+                let value = with_privacy(privacy, profile, 42, spec);
+
+                assert!(
+                    !has_storage_identifiers(&value),
+                    "{profile} {privacy:?} {spec} carried a storage identifier"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn openrtb_25_carries_the_gdpr_signals_in_ext() {
+    let granted = with_privacy(
+        Privacy::Gdpr { consent: Consent::Granted },
+        Profile::AppRewarded,
+        42,
+        SpecVersion::V25,
+    );
+    assert_eq!(consent(&granted, SpecVersion::V25), Some(consent_string(true)));
+    assert_eq!(gdpr(&granted, SpecVersion::V25), Some(1));
+    assert!(granted.pointer("/user/consent").is_none(), "2.5 has no first-class consent");
+
+    let denied = with_privacy(
+        Privacy::Gdpr { consent: Consent::Denied },
+        Profile::AppRewarded,
+        42,
+        SpecVersion::V25,
+    );
+    assert_eq!(consent(&denied, SpecVersion::V25), Some(consent_string(false)));
+    assert_eq!(gdpr(&denied, SpecVersion::V25), Some(1));
+    assert!(!has_storage_identifiers(&denied), "a denied request kept identifiers");
 }

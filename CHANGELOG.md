@@ -66,18 +66,24 @@ regenerated in place. No version has been released yet, so there is no second co
   valid TCF v2.2 (a `Created` equal to `LastUpdated`, `TcfPolicyVersion=4`, valid language and
   publisher country, a terminated vendor section; `CmpId=0` marks them as synthetic),
   `regs.gpp` always carries the same string as `user.consent`, `gpp_sid` always accompanies
-  `gpp`, and `coppa=1` never carries identifiers. The GPP envelope uses the canonical
+  `gpp`, and `coppa=1` never carries identifiers. When GDPR applies, a request carries storage
+  identifiers only with a positive consent signal: `device.ifa`, `user.id`, `user.buyeruid` and
+  `user.ext.eids` are absent when consent is denied or missing, so a parser never sees
+  identifiers it may not use. The GPP envelope uses the canonical
   `DBABM~…` header for version 1 with TCF EU v2 section id 2, not the previous `DBABMA~…`
   placeholder. `gdpr=1` uses an EU/UK location, non-GDPR traffic uses another location, and the
   legacy `us_privacy` string appears only for a US request. The location table gains `FRA`,
   `ESP`, `ITA` and `NLD`, and every location carries its real UTC offset and language.
-  Under OpenRTB 2.5 the writer omits `user.consent`, `regs.gdpr`, `regs.gpp` and `regs.gpp_sid`;
-  a `Privacy::Gdpr` override on 2.5 only changes the location and emits `regs.coppa=0`.
+  Under OpenRTB 2.5 the writer omits the first-class `user.consent`, `regs.gdpr`, `regs.gpp`
+  and `regs.gpp_sid`, and carries the same signals in the legacy `user.ext.consent` and
+  `regs.ext.gdpr` fields that 2.6 promoted; a `Privacy::Gdpr` override on 2.5 changes the
+  location, emits `regs.coppa=0`, and keeps the identifiers only for a granted consent.
 - `device.geo.utcoffset` follows the location (`180` for Moscow, `-300` for New York, `0` for
   London, `60` for the EU), instead of the constant `180` or the inconsistent `-180` fixture.
 - `degrade(100)` no longer selects a mutation the request cannot carry: `TmaxMissing` requires
-  a `tmax` and `ConsentMissing` requires a `consent`. Requests without those fields can select
-  a different mutation than before; non-degraded bytes are unchanged.
+  a `tmax` and `ConsentMissing` requires a `consent`. `ConsentMissing` and `ConsentDotted` now
+  reach OpenRTB 2.5 through `user.ext.consent`, so a seed can select a different defect than
+  before.
 - Three geo mutations join the set: `geo_country_alpha2`, `geo_city_name` and
   `geo_region_without_country`. The set grows from 25 to 28, so a seed can select a different
   defect than before; `corpus/v1` is regenerated in place.

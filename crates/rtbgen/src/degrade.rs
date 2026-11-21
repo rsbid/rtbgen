@@ -209,17 +209,21 @@ impl Mutation {
     /// Returns whether this mutation has a field to break in the model.
     ///
     /// The selector never picks a mutation the request cannot carry: a request
-    /// without a device gets no IPv6 address, and 2.5 has no `consent` field.
+    /// without a device gets no IPv6 address, and a request without a consent
+    /// string gets no `ConsentMissing`.
     fn applies(self, model: &RequestModel, spec: SpecVersion) -> bool {
         match self {
             Self::DeviceIpv6 => model.device().is_some(),
             Self::GeoCountryAlpha2 | Self::GeoCityName | Self::GeoRegionWithoutCountry => {
                 model.device().is_some_and(|device| device.geo().is_some())
             }
-            Self::ConsentMissing => {
-                spec.is_v26() && model.user().is_some_and(|user| user.consent().is_some())
-            }
-            Self::ConsentDotted => spec.is_v26() && model.user().is_some(),
+            Self::ConsentMissing => match spec {
+                SpecVersion::V25 => {
+                    model.user().is_some_and(|user| user.legacy_consent().is_some())
+                }
+                SpecVersion::V26 => model.user().is_some_and(|user| user.consent().is_some()),
+            },
+            Self::ConsentDotted => model.user().is_some(),
             Self::TmaxMissing => model.tmax().is_some(),
             Self::BannerNegativeSize | Self::BannerMissingSize => has_banner(model),
             Self::AuctionTypeZero
@@ -281,16 +285,8 @@ impl Mutation {
             Self::TmaxHigh => model.set_tmax(Some(120_000)),
             Self::TmaxZero => model.set_tmax(Some(0)),
             Self::TmaxMissing => model.set_tmax(None),
-            Self::ConsentMissing => {
-                if let Some(user) = model.user_mut() {
-                    user.set_consent(None);
-                }
-            }
-            Self::ConsentDotted => {
-                if let Some(user) = model.user_mut() {
-                    user.set_consent(Some("CPX.000"));
-                }
-            }
+            Self::ConsentMissing => clear_consent(model),
+            Self::ConsentDotted => dot_consent(model),
             Self::BannerNegativeSize => {
                 if let Some(banner) = first_banner(model) {
                     banner.set_w(Some(-1_i32));
@@ -368,6 +364,22 @@ pub(crate) fn apply(
     mutation.apply_to(model, entropy);
 
     Some(mutation)
+}
+
+/// Removes the consent string of the revision the request will be written in.
+const fn clear_consent(model: &mut RequestModel) {
+    if let Some(user) = model.user_mut() {
+        user.set_consent(None);
+        user.set_legacy_consent(None);
+    }
+}
+
+/// Replaces the consent string with a dotted value a TCF reader must reject.
+const fn dot_consent(model: &mut RequestModel) {
+    if let Some(user) = model.user_mut() {
+        user.set_consent(Some("CPX.000"));
+        user.set_legacy_consent(Some("CPX.000"));
+    }
 }
 
 /// Returns whether the request has a banner to break.
@@ -627,11 +639,36 @@ mod tests {
         assert!(!Mutation::TmaxMissing.applies(&model, SpecVersion::V26));
 
         assert!(Mutation::ConsentMissing.applies(&model, SpecVersion::V26));
+        assert!(Mutation::ConsentMissing.applies(&model, SpecVersion::V25));
         if let Some(user) = model.user_mut() {
             user.set_consent(None);
         }
         assert!(!Mutation::ConsentMissing.applies(&model, SpecVersion::V26));
+        assert!(Mutation::ConsentMissing.applies(&model, SpecVersion::V25));
+        if let Some(user) = model.user_mut() {
+            user.set_legacy_consent(None);
+        }
+        assert!(!Mutation::ConsentMissing.applies(&model, SpecVersion::V25));
         assert!(Mutation::ConsentDotted.applies(&model, SpecVersion::V26));
+    }
+
+    #[test]
+    fn consent_mutations_follow_the_revision() {
+        let mut entropy = RngEntropy::from_seed(Seed::new(7));
+
+        let mut missing = maximal();
+        Mutation::ConsentMissing.apply_to(&mut missing, &mut entropy);
+        let missing = value(&missing, SpecVersion::V25);
+        assert!(missing.pointer("/user/ext/consent").is_none());
+        assert_eq!(missing.pointer("/user/ext/k").and_then(serde_json::Value::as_u64), Some(1));
+
+        let mut dotted = maximal();
+        Mutation::ConsentDotted.apply_to(&mut dotted, &mut entropy);
+        let dotted = value(&dotted, SpecVersion::V25);
+        assert_eq!(
+            dotted.pointer("/user/ext/consent").and_then(serde_json::Value::as_str),
+            Some("CPX.000")
+        );
     }
 
     #[test]

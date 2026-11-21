@@ -298,6 +298,8 @@ pub(crate) struct Regs {
     gdpr: Option<Flag>,
     gpp: Option<&'static str>,
     gpp_sid: &'static [GppSectionId],
+    legacy_gdpr: Option<Flag>,
+    legacy_us_privacy: Option<&'static str>,
     ext: Option<RawJson>,
 }
 
@@ -306,6 +308,8 @@ setters!(Regs {
     set_gdpr => gdpr: Option<Flag>,
     set_gpp => gpp: Option<&'static str>,
     set_gpp_sid => gpp_sid: &'static [GppSectionId],
+    set_legacy_gdpr => legacy_gdpr: Option<Flag>,
+    set_legacy_us_privacy => legacy_us_privacy: Option<&'static str>,
     set_ext => ext: Option<RawJson>,
 });
 
@@ -321,6 +325,16 @@ impl Regs {
             option_number(f, "gdpr", self.gdpr)?;
             option_string(f, "gpp", self.gpp)?;
             option_number_array(f, "gpp_sid", self.gpp_sid)?;
+
+            return option_raw(f, "ext", self.ext);
+        }
+
+        // OpenRTB 2.5 carried `gdpr` and `consent` in `ext`; 2.6 promoted them.
+        if self.legacy_gdpr.is_some() || self.legacy_us_privacy.is_some() {
+            return object_field(f, "ext", |f| {
+                option_number(f, "gdpr", self.legacy_gdpr)?;
+                option_string(f, "us_privacy", self.legacy_us_privacy)
+            });
         }
 
         option_raw(f, "ext", self.ext)
@@ -332,6 +346,8 @@ impl Regs {
             gdpr: Some(Flag::Yes),
             gpp: Some(crate::privacy::GPP_GRANTED),
             gpp_sid: &[GppSectionId::TCF_EU_V2],
+            legacy_gdpr: Some(Flag::Yes),
+            legacy_us_privacy: None,
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }
     }
