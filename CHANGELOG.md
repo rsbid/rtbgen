@@ -8,6 +8,15 @@ The emitted bytes are part of the public API: changing them for an existing
 `(spec, profile, seed, knobs)` is a breaking change. `corpus/v1` is the initial
 byte contract.
 
+## [0.1.1] - 2026-11-21
+
+### Fixed
+
+- The installation snippets in `README.md` asked for `rtbgen = "0.3"`, a version that never
+  existed; `0.1.0` is the first published version. The roadmap no longer describes that release
+  as upcoming, and it states that `corpus/v1` is the published byte contract. No emitted byte
+  changes: `corpus/v1` is unchanged.
+
 ## [0.1.0] - 2026-11-21
 
 The first public release: valid OpenRTB 2.5/2.6 requests for every shape, the typed builder, the
@@ -149,4 +158,5 @@ second contract.
 - `Maximal` alternates `site` and `app` with the seed, because OpenRTB forbids both supply
   sources in one request.
 
+[0.1.1]: https://github.com/rsbid/rtbgen/releases/tag/v0.1.1
 [0.1.0]: https://github.com/rsbid/rtbgen/releases/tag/v0.1.0
