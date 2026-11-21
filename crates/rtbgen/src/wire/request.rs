@@ -115,7 +115,7 @@ impl RequestModel {
         option_string_array(f, "bapp", self.bapp)?;
 
         if let Some(source) = &self.source {
-            object_field(f, "source", |f| source.write(f))?;
+            object_field(f, "source", |f| source.write(f, spec))?;
         }
         if let Some(regs) = &self.regs {
             object_field(f, "regs", |f| regs.write(f, spec))?;

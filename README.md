@@ -88,14 +88,14 @@ carries. A mutation never breaks JSON: it breaks OpenRTB.
 
 ## Parser check
 
-The mutation table was measured, not guessed. On 2026-11-20, `rtbgen` 0.3.0 generated 180
+The mutation table was measured, not guessed. On 2026-11-21, `rtbgen` 0.3.0 generated 180
 requests (nine profiles, both revisions, ten seeds each) and one sample per mutation. Each
 implementation below parsed every request; a mutation counts as detected only when the same
 profile, revision and seed was **accepted** before the mutation and **rejected** after it.
 
 | Implementation | Version | Valid requests accepted | Defects detected |
 |---|---|---|---|
-| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 160/180 | 7/25 |
+| [`rtblint-core`](https://crates.io/crates/rtblint-core) | 0.14.8 | 180/180 | 7/25 |
 | [`openrtb26`](https://crates.io/crates/openrtb26) | 0.1.1 | 180/180 | 2/25 |
 | [`iab-specs-openrtb`](https://crates.io/crates/iab-specs-openrtb) | 0.5.1 | 132/180 | 2/25 |
 | [`openrtb`](https://crates.io/crates/openrtb) | 0.2.1 | 10/180 | 3/11 |
@@ -108,15 +108,15 @@ Read the table as a map of the layer each tool checks:
 - The serde parsers catch a wrong JSON type (`"1.50"` as money, `"USD"` instead of `["USD"]`)
   and almost nothing semantic. `openrtb26` accepts every request; `iab-specs-openrtb` adds two
   type checks.
-- The 20 `rtblint-core` misses are all `Sparse`: the profile deliberately omits `site`/`app`,
-  so a strict validator rejects it while a serde parser accepts it.
+- `rtblint-core` accepts all 180 valid requests; the gaps in its detection column are the
+  semantic checks listed above, not missing fields.
 - `openrtb` 0.2.1 rejects 170 of the 180 valid requests because its `User.data` has no serde
   default; its detection column covers the 11 mutations whose baseline it could parse.
   `iab-specs-openrtb` 0.5.1 reads nested `ext` and `pmp` as `Vec<u8>`, so map-valued extensions
   fail there regardless of validity.
 
-This matrix is why 0.3.0 emits `device.ifa` (not `idfa`), a native request at the root, and
-`skipmin`/`skipafter`/`gpp_sid` only with their parent field.
+This matrix is why 0.3.0 emits `device.ifa` (not `idfa`), a native request at the root,
+`skipmin`/`skipafter`/`gpp_sid` only with their parent field, and `source.schain` only under 2.6.
 
 ## Determinism
 
@@ -212,7 +212,8 @@ rtbgen corpus --verify
 The 0.3 release adds the `degrade` knob and its mutation table, and fixes the fields the parser
 matrix and the OpenRTB 2.6 audit caught: `device.ifa` (not the non-spec `idfa`), the Native
 Markup Request root, `skipmin`/`skipafter` only with `skip`, `gpp_sid` only with `gpp`, no
-`source.schain.nodes[].n`, and standard code lists for `device.geo.country` (ISO-3166-1 alpha-3),
+`source.schain.nodes[].n`, `source.schain` only under 2.6, and standard code lists for
+`device.geo.country` (ISO-3166-1 alpha-3),
 `device.geo.region` (ISO-3166-2), `device.geo.city` (UN/LOCODE) and `source.pchain` (TAG Payment
 ID). Existing snapshots must be regenerated; `corpus/v1` is regenerated in place because no
 version has been released. The `arbitrary` adapter now draws a degrade rate, which changes its

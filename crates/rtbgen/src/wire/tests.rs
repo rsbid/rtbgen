@@ -110,17 +110,27 @@ fn v25_is_v26_without_the_26_only_fields() {
         SpecVersion::V25,
     );
 
-    for field in ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid"] {
+    for field in ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid", "schain"] {
         assert!(!v25_json.contains(&std::format!("\"{field}\"")), "{field} leaked into V25");
     }
+    assert!(
+        v25_json.contains("\"pchain\""),
+        "pchain exists in OpenRTB 2.5 and must survive the V25 downgrade"
+    );
 
     let v26: Value = serde_json::from_str(&v26_json).expect("V26 is valid JSON");
     let v25: Value = serde_json::from_str(&v25_json).expect("V25 is valid JSON");
     let mut expected = v26;
 
-    for path in
-        ["/imp/0/rwdd", "/imp/0/ssai", "/user/consent", "/regs/gdpr", "/regs/gpp", "/regs/gpp_sid"]
-    {
+    for path in [
+        "/imp/0/rwdd",
+        "/imp/0/ssai",
+        "/user/consent",
+        "/regs/gdpr",
+        "/regs/gpp",
+        "/regs/gpp_sid",
+        "/source/schain",
+    ] {
         assert!(remove_path(&mut expected, path), "{path} was not present");
     }
 

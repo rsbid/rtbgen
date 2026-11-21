@@ -163,12 +163,18 @@ pub(crate) struct Source {
 }
 
 impl Source {
-    pub(crate) fn write<W: fmt::Write>(&self, f: &mut Object<'_, W>) -> fmt::Result {
+    pub(crate) fn write<W: fmt::Write>(
+        &self,
+        f: &mut Object<'_, W>,
+        spec: SpecVersion,
+    ) -> fmt::Result {
         option_number(f, "fd", self.fd)?;
         option_string(f, "tid", self.tid)?;
         option_string(f, "pchain", self.pchain)?;
 
-        if let Some(schain) = &self.schain {
+        if spec.is_v26()
+            && let Some(schain) = &self.schain
+        {
             object_field(f, "schain", |f| schain.write(f))?;
         }
 

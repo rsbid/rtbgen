@@ -5,7 +5,7 @@
 use rtbgen::{Profile, Request, Seed, SpecVersion};
 use serde_json::Value;
 
-const SPEC_FIELDS: [&str; 6] = ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid"];
+const SPEC_FIELDS: [&str; 7] = ["rwdd", "ssai", "consent", "gdpr", "gpp", "gpp_sid", "schain"];
 
 fn render(profile: Profile, spec: SpecVersion, seed: u64) -> Value {
     let text = Request::builder(profile).seed(Seed::new(seed)).spec(spec).build().to_json_string();
@@ -242,6 +242,7 @@ fn v25_drops_exactly_the_26_fields() {
             "/regs/gdpr",
             "/regs/gpp",
             "/regs/gpp_sid",
+            "/source/schain",
         ] {
             remove_path(&mut expected, path);
         }
