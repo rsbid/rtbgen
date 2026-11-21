@@ -45,6 +45,9 @@ has been released yet, so there is no second corpus contract.
 - `device.geo.city` is a UN/LOCODE (`RUMOW`, `USNYC`, `DEBER`, `GBLON`), not a city name.
 - `device.geo.region` is the full ISO-3166-2 code (`RU-MOW`, `US-NY`, `DE-BE`, `GB-ENG`).
 - `source.pchain` is a valid TAG Payment ID chain (`XYZ01234:ABCD56789`), not `pchain-1`.
+- `degrade(100)` no longer selects a mutation the request cannot carry: `TmaxMissing` requires
+  a `tmax` and `ConsentMissing` requires a `consent`. Requests without those fields can select
+  a different mutation than before; non-degraded bytes are unchanged.
 - The corpus is regenerated in `corpus/v1`. There is no `corpus/v2`: the crate has not been
   released, so the initial contract is the only one. Regenerate `insta` snapshots: every existing
   `(spec, profile, seed, knobs)` tuple produced new bytes.

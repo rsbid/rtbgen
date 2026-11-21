@@ -201,7 +201,11 @@ impl Mutation {
     fn applies(self, model: &RequestModel, spec: SpecVersion) -> bool {
         match self {
             Self::DeviceIpv6 => model.device().is_some(),
-            Self::ConsentMissing | Self::ConsentDotted => spec.is_v26() && model.user().is_some(),
+            Self::ConsentMissing => {
+                spec.is_v26() && model.user().is_some_and(|user| user.consent().is_some())
+            }
+            Self::ConsentDotted => spec.is_v26() && model.user().is_some(),
+            Self::TmaxMissing => model.tmax().is_some(),
             Self::BannerNegativeSize | Self::BannerMissingSize => has_banner(model),
             Self::AuctionTypeZero
             | Self::AuctionTypeReserved
@@ -219,7 +223,6 @@ impl Mutation {
             | Self::DuplicateImpIds
             | Self::TmaxHigh
             | Self::TmaxZero
-            | Self::TmaxMissing
             | Self::DeepExt
             | Self::CurrenciesAsString
             | Self::CurrenciesInvalidCode => true,
@@ -528,6 +531,47 @@ mod tests {
                 assert_full_rate_mutates(profile, spec);
             }
         }
+    }
+
+    fn assert_full_rate_changes(profile: Profile, spec: SpecVersion) {
+        for seed in 0_u64..64 {
+            let plain =
+                Config::new(RequestId::from_seed(Seed::new(seed)), None, None, None).spec(spec);
+            let degraded = plain.degrade(DegradeRate::MAX);
+            let before = generate::build(profile, Seed::new(seed), &plain);
+            let after = generate::build(profile, Seed::new(seed), &degraded);
+
+            assert_ne!(
+                render(before.model(), spec),
+                render(after.model(), spec),
+                "{profile} {spec} seed {seed} selected a no-op mutation"
+            );
+        }
+    }
+
+    #[test]
+    fn a_full_rate_changes_the_bytes() {
+        for profile in Profile::ALL {
+            for spec in SpecVersion::ALL {
+                assert_full_rate_changes(profile, spec);
+            }
+        }
+    }
+
+    #[test]
+    fn mutations_that_need_a_field_are_not_selected_without_it() {
+        let mut model = maximal();
+
+        assert!(Mutation::TmaxMissing.applies(&model, SpecVersion::V26));
+        model.set_tmax(None);
+        assert!(!Mutation::TmaxMissing.applies(&model, SpecVersion::V26));
+
+        assert!(Mutation::ConsentMissing.applies(&model, SpecVersion::V26));
+        if let Some(user) = model.user_mut() {
+            user.set_consent(None);
+        }
+        assert!(!Mutation::ConsentMissing.applies(&model, SpecVersion::V26));
+        assert!(Mutation::ConsentDotted.applies(&model, SpecVersion::V26));
     }
 
     #[test]

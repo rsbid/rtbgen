@@ -342,6 +342,11 @@ setters!(User {
 });
 
 impl User {
+    /// Returns the TCF consent string, when the profile emitted one.
+    pub(crate) const fn consent(&self) -> Option<&'static str> {
+        self.consent
+    }
+
     pub(crate) fn write<W: fmt::Write>(
         &self,
         f: &mut Object<'_, W>,

@@ -103,8 +103,10 @@ profile, revision and seed was **accepted** before the mutation and **rejected**
 Read the table as a map of the layer each tool checks:
 
 - `rtblint-core` is the only one that rejects `at: 0/5/499`, `bidfloor` as a string, both
-  `site` and `app`, `tmax: 0` and `cur` as a string. It still accepts `"usd"`/`""` in
-  `bidfloorcur`, IPv6 in `device.ip`, duplicate impression ids and 10 000 impressions.
+  `site` and `app`, `tmax: 0` and `cur` as a string. It warns on, but accepts, `"usd"`/`""`
+  in `bidfloorcur`, an implausible `tmax`, a malformed currency code and a missing or dotted
+  `consent`. It is silent on IPv6 in `device.ip`, duplicate impression ids, an empty request
+  id and a negative banner width.
 - The serde parsers catch a wrong JSON type (`"1.50"` as money, `"USD"` instead of `["USD"]`)
   and almost nothing semantic. `openrtb26` accepts every request; `iab-specs-openrtb` adds two
   type checks.

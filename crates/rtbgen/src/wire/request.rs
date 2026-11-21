@@ -85,6 +85,11 @@ impl RequestModel {
         self.user.as_mut()
     }
 
+    /// Returns the deadline, when the profile emitted one.
+    pub(crate) const fn tmax(&self) -> Option<u32> {
+        self.tmax
+    }
+
     pub(crate) fn write<W: fmt::Write>(&self, out: &mut W, spec: SpecVersion) -> fmt::Result {
         object(out, |f| self.write_fields(f, spec))
     }
