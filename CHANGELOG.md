@@ -10,8 +10,9 @@ byte contract.
 
 ## [0.3.0] - 2026-11-20
 
-The `degrade` knob, the closed mutation set, and four fields the parser matrix caught. Existing
-profiles change bytes, so `corpus/v2` is the new byte contract; `corpus/v1` stays as history.
+The `degrade` knob, the closed mutation set, and the fields the parser matrix and the OpenRTB 2.6
+audit caught. Existing profiles change bytes, so `corpus/v1` is regenerated in place. No version
+has been released yet, so there is no second corpus contract.
 
 ### Added
 
@@ -36,8 +37,15 @@ profiles change bytes, so `corpus/v2` is the new byte contract; `corpus/v1` stay
   wrapper is gone.
 - `imp.video.skipmin` and `skipafter` appear only when `skip` is set, as the spec requires.
 - `regs.gpp_sid` appears only when `regs.gpp` is present, so the section ids are scoped.
-- The corpus moved to `corpus/v2`; `corpus/v1` is kept as the previous contract. Regenerate
-  `insta` snapshots: every existing `(spec, profile, seed, knobs)` tuple produced new bytes.
+- `source.schain.nodes[].n` is no longer emitted: OpenRTB 2.6 defines no `n` attribute on
+  `SupplyChainNode`.
+- `device.geo.country` is an ISO-3166-1 alpha-3 code (`RUS`, `USA`, `DEU`, `GBR`), not alpha-2.
+- `device.geo.city` is a UN/LOCODE (`RUMOW`, `USNYC`, `DEBER`, `GBLON`), not a city name.
+- `device.geo.region` is the full ISO-3166-2 code (`RU-MOW`, `US-NY`, `DE-BE`, `GB-ENG`).
+- `source.pchain` is a valid TAG Payment ID chain (`XYZ01234:ABCD56789`), not `pchain-1`.
+- The corpus is regenerated in `corpus/v1`. There is no `corpus/v2`: the crate has not been
+  released, so the initial contract is the only one. Regenerate `insta` snapshots: every existing
+  `(spec, profile, seed, knobs)` tuple produced new bytes.
 - The `arbitrary` adapter draws a degrade rate as one of its typed knobs, so a fuzz input can
   produce a malformed request. This changes the adapter's byte mapping for an existing input
   (the pinned adapter fixture changes). The `proptest` strategy varies the rate and shrinks

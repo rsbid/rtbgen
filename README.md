@@ -122,12 +122,12 @@ This matrix is why 0.3.0 emits `device.ifa` (not `idfa`), a native request at th
 
 Same seed + same config + same `rtbgen` version ⇒ byte-identical output, including the mutation
 a degraded request carries. The PRNG is `rtbgen`'s own (not `rand`, whose algorithm is not
-guaranteed stable across versions), key order is fixed, and `corpus/v2/` is checked in and
-verified by the test suite. `corpus/v1/` remains as the previous byte contract.
+guaranteed stable across versions), key order is fixed, and `corpus/v1/` is checked in and
+verified by the test suite.
 
 **Changing the bytes of existing output is a semver-major change.**
 
-The corpus lives in [`crates/rtbgen/corpus/v2`](https://github.com/rsbid/rtbgen/tree/main/crates/rtbgen/corpus/v2): `manifest.toml` names
+The corpus lives in [`crates/rtbgen/corpus/v1`](https://github.com/rsbid/rtbgen/tree/main/crates/rtbgen/corpus/v1): `manifest.toml` names
 every entry and the JSON files are the bytes. Regenerate them with `rtbgen corpus --write`;
 never edit them by hand.
 
@@ -209,12 +209,14 @@ rtbgen corpus --verify
 
 ## Roadmap
 
-The 0.3 release adds the `degrade` knob and its mutation table, and fixes four fields the parser
-matrix caught: `device.ifa` (not the non-spec `idfa`), the Native Markup Request root, `skipmin`/
-`skipafter` only with `skip`, and `gpp_sid` only with `gpp`. Existing snapshots must be
-regenerated; `corpus/v2` is the new byte contract and `corpus/v1` is kept as history. The
-`arbitrary` adapter now draws a degrade rate, which changes its byte mapping too. After a period
-without behaviour changes, 1.0 freezes the API and the bytes.
+The 0.3 release adds the `degrade` knob and its mutation table, and fixes the fields the parser
+matrix and the OpenRTB 2.6 audit caught: `device.ifa` (not the non-spec `idfa`), the Native
+Markup Request root, `skipmin`/`skipafter` only with `skip`, `gpp_sid` only with `gpp`, no
+`source.schain.nodes[].n`, and standard code lists for `device.geo.country` (ISO-3166-1 alpha-3),
+`device.geo.region` (ISO-3166-2), `device.geo.city` (UN/LOCODE) and `source.pchain` (TAG Payment
+ID). Existing snapshots must be regenerated; `corpus/v1` is regenerated in place because no
+version has been released. The `arbitrary` adapter now draws a degrade rate, which changes its
+byte mapping too. After a period without behaviour changes, 1.0 freezes the API and the bytes.
 
 ## License
 

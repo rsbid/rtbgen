@@ -92,6 +92,6 @@ non-ASCII `id`, `site`+`app`, over-cap and huge `imp` lists, duplicate `imp[].id
 - Repository: https://github.com/rsbid/rtbgen
 - API docs: https://docs.rs/rtbgen
 - Changelog: https://github.com/rsbid/rtbgen/blob/main/CHANGELOG.md
-- Golden corpus: crates/rtbgen/corpus/v2/ (`v1` is the previous byte contract)
+- Golden corpus: crates/rtbgen/corpus/v1/
 - Parser check: README.md, section "Parser check" (measured with `rtblint-core`, `openrtb`,
   `openrtb26` and `iab-specs-openrtb`)

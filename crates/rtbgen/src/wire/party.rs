@@ -314,9 +314,9 @@ impl Geo {
 
     pub(crate) const fn maximal() -> Self {
         Self {
-            country: Some("RU"),
-            region: Some("MOW"),
-            city: Some("Moscow"),
+            country: Some("RUS"),
+            region: Some("RU-MOW"),
+            city: Some("RUMOW"),
             zip: Some("101000"),
             type_code: Some(LocationType::IP_ADDRESS),
             utcoffset: Some(-180),

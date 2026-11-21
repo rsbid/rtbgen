@@ -192,3 +192,27 @@ profile = "app_banner"
 seed = 4
 impressions = 2
 deals = 2
+
+[[request]]
+name = "degrade-site-display-v26-35"
+spec = "2.6"
+profile = "site_display"
+seed = 35
+degrade = 100
+mutation = "bid_floor_as_string"
+
+[[request]]
+name = "degrade-site-video-v25-5"
+spec = "2.5"
+profile = "site_video"
+seed = 5
+degrade = 100
+mutation = "bid_floor_currency_empty"
+
+[[request]]
+name = "degrade-sparse-v26-8"
+spec = "2.6"
+profile = "sparse"
+seed = 8
+degrade = 100
+mutation = "banner_missing_size"

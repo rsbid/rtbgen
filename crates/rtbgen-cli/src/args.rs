@@ -42,7 +42,7 @@ pub(crate) struct Corpus {
 }
 
 /// The default corpus directory, relative to the repository root.
-const DEFAULT_CORPUS_DIR: &str = "crates/rtbgen/corpus/v2";
+const DEFAULT_CORPUS_DIR: &str = "crates/rtbgen/corpus/v1";
 
 impl Command {
     /// Parses the process arguments, without the program name.

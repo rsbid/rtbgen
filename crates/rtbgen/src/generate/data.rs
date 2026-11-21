@@ -101,10 +101,10 @@ pub(super) const IPS: &[&str] = &["203.0.113.7", "198.51.100.23", "192.0.2.44"];
 pub(super) const DEFAULT_IFA: &str = "A1B2C3D4-0000-4000-8000-000000000001";
 pub(super) const IFAS: &[&str] = &[DEFAULT_IFA, "A1B2C3D4-0000-4000-8000-000000000002"];
 pub(super) const GEOS: &[(&str, &str, &str, &str)] = &[
-    ("RU", "MOW", "Moscow", "101000"),
-    ("US", "NY", "New York", "10001"),
-    ("DE", "BE", "Berlin", "10115"),
-    ("GB", "ENG", "London", "EC1A"),
+    ("RUS", "RU-MOW", "RUMOW", "101000"),
+    ("USA", "US-NY", "USNYC", "10001"),
+    ("DEU", "DE-BE", "DEBER", "10115"),
+    ("GBR", "GB-ENG", "GBLON", "EC1A"),
 ];
 pub(super) const LANGUAGES: &[&str] = &["en", "ru", "de"];
 pub(super) const DEFAULT_CONSENT: &str =

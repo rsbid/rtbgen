@@ -1,10 +1,9 @@
 //! The versioned golden corpus.
 //!
 //! Every entry is one `(spec, profile, seed, knobs)` tuple whose bytes are
-//! checked into `corpus/v2/`. The corpus is the executable form of the
+//! checked into `corpus/v1/`. The corpus is the executable form of the
 //! determinism contract: regenerate it with `rtbgen corpus --write`, never by
-//! hand, and treat a changed file as a byte change of the public API. `v1` is
-//! kept as the previous byte contract.
+//! hand, and treat a changed file as a byte change of the public API.
 
 use crate::deals::Deals;
 use crate::degrade::DegradeRate;
@@ -16,10 +15,10 @@ use crate::seed::Seed;
 use crate::version::SpecVersion;
 
 /// The version of the corpus contract.
-pub const VERSION: &str = "v2";
+pub const VERSION: &str = "v1";
 
 /// The directory, relative to the crate root, that holds the corpus.
-pub const DIR: &str = "corpus/v2";
+pub const DIR: &str = "corpus/v1";
 
 /// One golden fixture.
 #[derive(Clone, Copy, Debug)]

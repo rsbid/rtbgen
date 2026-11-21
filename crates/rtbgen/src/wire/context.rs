@@ -182,7 +182,7 @@ impl Source {
         Self {
             fd: Some(FinalDecision::UPSTREAM),
             tid: Some("tid-1"),
-            pchain: Some("pchain-1"),
+            pchain: Some("XYZ01234:ABCD56789"),
             schain: Some(SupplyChain {
                 ver: "1.0",
                 complete: Flag::Yes,
@@ -218,7 +218,6 @@ pub(crate) struct SupplyChainNode {
     asi: &'static str,
     sid: &'static str,
     rid: Option<&'static str>,
-    n: Option<u8>,
     hp: Option<Flag>,
     ext: Option<RawJson>,
 }
@@ -228,7 +227,6 @@ impl SupplyChainNode {
         field_string(f, "asi", self.asi)?;
         field_string(f, "sid", self.sid)?;
         option_string(f, "rid", self.rid)?;
-        option_number(f, "n", self.n)?;
         option_number(f, "hp", self.hp)?;
         option_raw(f, "ext", self.ext)
     }
@@ -238,7 +236,6 @@ impl SupplyChainNode {
             asi: "exchange.example",
             sid: "123",
             rid: Some("rid-1"),
-            n: Some(1),
             hp: Some(Flag::Yes),
             ext: Some(RawJson::from_static(r#"{"k":1}"#)),
         }

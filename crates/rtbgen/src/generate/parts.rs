@@ -114,7 +114,7 @@ pub(super) fn build_app(rng: &mut impl Entropy) -> App {
 }
 
 fn build_geo(rng: &mut impl Entropy) -> Geo {
-    let (country, region, city, zip) = choose(rng, GEOS, ("RU", "MOW", "Moscow", "101000"));
+    let (country, region, city, zip) = choose(rng, GEOS, ("RUS", "RU-MOW", "RUMOW", "101000"));
 
     let mut geo = Geo::default();
     geo.set_country(Some(country));
@@ -445,7 +445,7 @@ pub(super) fn build_app_request(
 mod tests {
     extern crate std;
 
-    use super::{Media, build_imp_list, build_mixed_imp_list, choose};
+    use super::{GEOS, Media, build_imp_list, build_mixed_imp_list, choose};
     use crate::rng::RngEntropy;
     use crate::seed::Seed;
     use crate::wire::WireId;
@@ -479,5 +479,34 @@ mod tests {
         let picked: u8 = choose(&mut rng, &[], 9);
 
         assert_eq!(picked, 9);
+    }
+
+    #[test]
+    fn the_geo_table_follows_the_spec_code_lists() {
+        for &(country, region, city, _zip) in GEOS {
+            assert_eq!(country.len(), 3, "{country} is not an ISO-3166-1 alpha-3 code");
+            assert!(
+                country.bytes().all(|byte| byte.is_ascii_uppercase()),
+                "{country} is not an ISO-3166-1 alpha-3 code"
+            );
+
+            let mut parts = region.split('-');
+            let prefix = parts.next();
+            let subdivision = parts.next();
+            assert!(parts.next().is_none(), "{region} has more than one hyphen");
+            assert_eq!(prefix, city.get(..2), "{region} and {city} disagree on the country prefix");
+            assert!(
+                subdivision.is_some_and(|code| code
+                    .bytes()
+                    .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())),
+                "{region} is not an ISO-3166-2 code"
+            );
+
+            assert_eq!(city.len(), 5, "{city} is not a UN/LOCODE");
+            assert!(
+                city.bytes().skip(2).all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit()),
+                "{city} is not a UN/LOCODE"
+            );
+        }
     }
 }
