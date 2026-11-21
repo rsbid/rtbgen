@@ -10,9 +10,9 @@ byte contract.
 
 ## [0.3.0] - 2026-11-20
 
-The `degrade` knob, the closed mutation set, and the fields the parser matrix and the OpenRTB 2.6
-audit caught. Existing profiles change bytes, so `corpus/v1` is regenerated in place. No version
-has been released yet, so there is no second corpus contract.
+The `degrade` knob, the closed mutation set, coherent GDPR/COPPA scenarios, and the fields the
+parser matrix and the OpenRTB 2.6 audit caught. Existing profiles change bytes, so `corpus/v1` is
+regenerated in place. No version has been released yet, so there is no second corpus contract.
 
 ### Added
 
@@ -30,9 +30,16 @@ has been released yet, so there is no second corpus contract.
 - `Request::from_entropy_with(profile, spec, rate, entropy)` for a custom deterministic source.
 - `Privacy` and `Consent`, and `RequestBuilder::privacy`: one scenario owns `regs`,
   `user.consent`, `regs.gpp`, the request location and whether identifiers may appear.
-  `Privacy::Gdpr` emits a valid TCF v2.2 TC string (verified by a `lib_tcstring` dev-dependency),
-  `Privacy::Coppa` drops the user, `device.ifa`, `device.ip` and precise geolocation, and
-  `Privacy::GdprWithoutConsent` is the no-consent case a bidder must handle.
+  `Privacy::Gdpr` emits a syntactically valid TCF v2.2 TC string (verified by a `lib_tcstring`
+  dev-dependency; `CmpId` is 0, the string is a synthetic fixture), `Privacy::Coppa` drops the
+  user, `device.ifa`, `device.ip` and precise geolocation, and `Privacy::GdprWithoutConsent` is
+  the no-consent case a bidder must handle.
+- `Privacy::ALL`, `Privacy::name()` and `Privacy::from_name()`: the stable snake_case scenario
+  names (`none`, `coppa`, `gdpr_disabled`, `gdpr_granted`, `gdpr_denied`, `gdpr_no_consent`)
+  used by the CLI and the corpus manifest.
+- `--privacy <NAME>` in the CLI, `Privacy` in the `arbitrary` adapter, and the privacy scenario
+  in the `proptest` strategy.
+- `rtbgen corpus --write` writes `manifest.toml` as well as the JSON fixtures.
 - `--degrade <PERCENT>` in the CLI, accepting `5` and `5%`.
 - `examples/05_malformed_input.rs`.
 
@@ -55,13 +62,17 @@ has been released yet, so there is no second corpus contract.
 - `device.geo.region` uses ISO-3166-2, with the 2-letter state code for the USA as the spec
   requires (`RU-MOW`, `NY`, `DE-BE`, `GB-ENG`, `FR-IDF`, `ES-MD`, `IT-RM`, `NL-NH`).
 - `source.pchain` is a valid TAG Payment ID chain (`XYZ01234:ABCD56789`), not `pchain-1`.
-- Privacy is coherent instead of three independent draws. The TC strings are now valid TCF v2.2
-  (a `Created` equal to `LastUpdated`, `TcfPolicyVersion=4`, valid language and publisher
-  country, a terminated vendor section), `regs.gpp` always carries the same string as
-  `user.consent`, `gpp_sid` always accompanies `gpp`, and `coppa=1` never carries identifiers.
-  `gdpr=1` uses an EU/UK location, non-GDPR traffic uses another location, and the legacy
-  `us_privacy` string appears only for a US request. The location table gains `FRA`, `ESP`,
-  `ITA` and `NLD`, and every location carries its real UTC offset and language.
+- Privacy is coherent instead of three independent draws. The TC strings are now syntactically
+  valid TCF v2.2 (a `Created` equal to `LastUpdated`, `TcfPolicyVersion=4`, valid language and
+  publisher country, a terminated vendor section; `CmpId=0` marks them as synthetic),
+  `regs.gpp` always carries the same string as `user.consent`, `gpp_sid` always accompanies
+  `gpp`, and `coppa=1` never carries identifiers. The GPP envelope uses the canonical
+  `DBABM~…` header for version 1 with TCF EU v2 section id 2, not the previous `DBABMA~…`
+  placeholder. `gdpr=1` uses an EU/UK location, non-GDPR traffic uses another location, and the
+  legacy `us_privacy` string appears only for a US request. The location table gains `FRA`,
+  `ESP`, `ITA` and `NLD`, and every location carries its real UTC offset and language.
+  Under OpenRTB 2.5 the writer omits `user.consent`, `regs.gdpr`, `regs.gpp` and `regs.gpp_sid`;
+  a `Privacy::Gdpr` override on 2.5 only changes the location and emits `regs.coppa=0`.
 - `device.geo.utcoffset` follows the location (`180` for Moscow, `-300` for New York, `0` for
   London, `60` for the EU), instead of the constant `180` or the inconsistent `-180` fixture.
 - `degrade(100)` no longer selects a mutation the request cannot carry: `TmaxMissing` requires
@@ -71,12 +82,13 @@ has been released yet, so there is no second corpus contract.
   `geo_region_without_country`. The set grows from 25 to 28, so a seed can select a different
   defect than before; `corpus/v1` is regenerated in place.
 - The corpus is regenerated in `corpus/v1`. There is no `corpus/v2`: the crate has not been
-  released, so the initial contract is the only one. Regenerate `insta` snapshots: every existing
-  `(spec, profile, seed, knobs)` tuple produced new bytes.
-- The `arbitrary` adapter draws a degrade rate as one of its typed knobs, so a fuzz input can
-  produce a malformed request. This changes the adapter's byte mapping for an existing input
-  (the pinned adapter fixture changes). The `proptest` strategy varies the rate and shrinks
-  toward zero.
+  released, so the initial contract is the only one. The privacy entries now cover `Maximal`,
+  `Sparse`, a V25 GDPR override and a privacy + degrade combination. Regenerate `insta`
+  snapshots: every existing `(spec, profile, seed, knobs)` tuple produced new bytes.
+- The `arbitrary` adapter draws a degrade rate and a privacy scenario as typed knobs, so a fuzz
+  input can produce a malformed or a specific privacy request. This changes the adapter's byte
+  mapping for an existing input; the pinned uniform fixture keeps its bytes. The `proptest`
+  strategy varies the rate and the scenario and shrinks them toward zero/absence.
 
 ### Notes
 

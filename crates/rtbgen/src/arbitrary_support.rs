@@ -13,6 +13,7 @@ use crate::degrade::DegradeRate;
 use crate::floor::Floor;
 use crate::generate::{self, Config};
 use crate::impressions::ImpressionCount;
+use crate::privacy::Privacy;
 use crate::profile::Profile;
 use crate::request::Request;
 use crate::rng::BytesEntropy;
@@ -59,13 +60,20 @@ impl Request {
         // A whole percentage: 0..=100. A byte above 100 maps back into range
         // instead of saturating at 100, so a fuzzer sees the whole scale.
         let degrade = u.arbitrary::<u8>().unwrap_or(0).checked_rem(101).unwrap_or(0);
+        let privacy = u
+            .arbitrary::<bool>()
+            .unwrap_or(false)
+            .then(|| u.choose(&Privacy::ALL).copied().unwrap_or(Privacy::None));
 
         let remaining = u.len();
         let bytes = u.bytes(remaining).unwrap_or(&[]);
         let mut entropy = BytesEntropy::new(bytes);
-        let config = Config::from_entropy(&mut entropy, impressions, deals, floor)
+        let mut config = Config::from_entropy(&mut entropy, impressions, deals, floor)
             .degrade(DegradeRate::percent(u16::from(degrade)))
             .spec(spec);
+        if let Some(privacy) = privacy {
+            config = config.privacy_override(privacy);
+        }
         let generated = generate::build_with(profile, &config, &mut entropy);
 
         Self::from_generated(profile, None, spec, &generated)

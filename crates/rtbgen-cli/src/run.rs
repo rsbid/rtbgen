@@ -24,6 +24,8 @@ OPTIONS:
     --deals <N>           add a private marketplace with N deals, clamped to 1..=8
     --floor <CPM>         bid floor of every impression
     --currency <CODE>     currency of --floor (default USD)
+    --privacy <NAME>      privacy scenario: none, coppa, gdpr_granted, gdpr_denied,
+                          gdpr_no_consent, gdpr_disabled
     --degrade <PERCENT>   one spec violation in about PERCENT% of requests (0..=100)
     --out <DIR>           write request-NNNNNN.json files instead of stdout
     --list-profiles       print the profiles and their shapes
@@ -59,6 +61,9 @@ fn build(generate: &Generate, seed: Seed) -> Request {
     }
     if let Some(floor) = generate.floor {
         builder = builder.floor(floor);
+    }
+    if let Some(privacy) = generate.privacy {
+        builder = builder.privacy(privacy);
     }
     if let Some(degrade) = generate.degrade {
         builder = builder.degrade(degrade);
@@ -105,6 +110,13 @@ fn run_corpus(corpus: &Corpus) -> Result<(), Error> {
             let path = corpus.dir.join(std::format!("{}.json", entry.name()));
             fs::write(&path, entry.request().to_json_string())?;
         }
+
+        let mut manifest = String::new();
+        if corpus::write_manifest(&mut manifest).is_err() {
+            return Err(Error::Io(io::Error::other("the manifest sink failed")));
+        }
+        fs::write(corpus.dir.join("manifest.toml"), manifest)?;
+
         let mut out = io::stdout().lock();
         writeln!(out, "wrote {} fixtures to {}", corpus::ALL.len(), corpus.dir.display())?;
         return Ok(());
@@ -134,6 +146,23 @@ fn verify_corpus(directory: &Path) -> Result<(), Error> {
         }
     }
 
+    let manifest_path = directory.join("manifest.toml");
+    let mut expected_manifest = String::new();
+    if corpus::write_manifest(&mut expected_manifest).is_err() {
+        return Err(Error::Io(io::Error::other("the manifest sink failed")));
+    }
+    match fs::read_to_string(&manifest_path) {
+        Ok(expected) if expected == expected_manifest => {}
+        Ok(_) => {
+            writeln!(stderr, "{}: differs from the generator", manifest_path.display())?;
+            failures = failures.saturating_add(1);
+        }
+        Err(error) => {
+            writeln!(stderr, "{}: {error}", manifest_path.display())?;
+            failures = failures.saturating_add(1);
+        }
+    }
+
     if failures > 0 {
         return Err(Error::CorpusMismatch(failures));
     }
@@ -141,4 +170,21 @@ fn verify_corpus(directory: &Path) -> Result<(), Error> {
     let mut out = io::stdout().lock();
     writeln!(out, "{} fixtures verified", corpus::ALL.len())?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use rtbgen::{Privacy, Seed};
+
+    use super::build;
+    use crate::args::Generate;
+
+    #[test]
+    fn the_privacy_knob_reaches_the_cli_request() {
+        let generate = Generate { privacy: Some(Privacy::Coppa), ..Generate::default() };
+        let json = build(&generate, Seed::new(0)).to_json_string();
+
+        assert!(json.contains("\"coppa\":1"), "the COPPA flag was not emitted");
+        assert!(!json.contains("\"user\""), "a child-directed request kept the user");
+    }
 }

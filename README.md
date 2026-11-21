@@ -64,17 +64,22 @@ chooses which supply source the request keeps. Every other field appears in eith
 
 `regs`, `user.consent` and `regs.gpp` are not drawn independently: one `Privacy` scenario owns
 all of them, so the request cannot claim `gdpr=1` from the USA or send a GPP string that differs
-from `user.consent`. The seed draws a scenario (no regulation, GDPR granted/denied/without
-consent, GDPR disabled, or COPPA); `.privacy()` replaces it on any profile.
+from `user.consent`. For every profile that draws a request body (all except `Sparse` and
+`Maximal`), the seed draws a scenario (no regulation, GDPR granted/denied/without consent, GDPR
+disabled, or COPPA); `.privacy()` replaces it on any profile. The CLI takes the same names:
+`--privacy gdpr_granted`, `--privacy coppa`, and so on.
 
-- `Privacy::Gdpr { consent }` emits a real TCF v2.2 TC string (`TcfPolicyVersion=4`,
-  `IsServiceSpecific=1`, a terminated vendor section), the matching `regs.gpp` and `gpp_sid`,
-  and a location in the EU/UK.
+- `Privacy::Gdpr { consent }` emits a syntactically valid TCF v2.2 TC string
+  (`TcfPolicyVersion=4`, `IsServiceSpecific=1`, a terminated vendor section; `CmpId=0` marks it
+  as a synthetic fixture), the matching `regs.gpp` and `gpp_sid`, and a location in the EU/UK.
+  Under `OpenRTB` 2.5 those fields do not exist, so only the location and `regs.coppa=0` remain.
 - `Privacy::Coppa` emits `coppa=1` with a US location, no `user`, no `device.ifa`, no
   `device.ip` and no precise location.
-- `Privacy::GdprWithoutConsent` is `gdpr=1` with no TC string, the case a bidder must handle.
-- `Privacy::GdprDisabled` and `Privacy::None` use non-EU locations; the legacy
-  `regs.ext.us_privacy` string appears only for a US request.
+- `Privacy::GdprWithoutConsent` is `gdpr=1` with no TC string, the case a bidder must handle;
+  under 2.5 the `gdpr` field is omitted too.
+- `Privacy::GdprDisabled` and `Privacy::None` use non-EU locations on profiles with a device; the legacy
+  `regs.ext.us_privacy` string appears only for a US request. `Privacy::ALL`, `name()` and
+  `from_name()` are the stable set used by the CLI and the corpus manifest.
 
 Locations carry their real UTC offset, region and UN/LOCODE, and the language follows the
 country.

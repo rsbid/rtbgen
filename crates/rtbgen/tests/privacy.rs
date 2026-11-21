@@ -3,7 +3,7 @@
 
 #![expect(clippy::expect_used, reason = "in tests a panic = a failed test")]
 
-use rtbgen::{Consent, Privacy, Profile, Request, Seed, SpecVersion};
+use rtbgen::{Consent, DegradeRate, Privacy, Profile, Request, Seed, SpecVersion};
 use serde_json::Value;
 
 const EU: [&str; 6] = ["DEU", "GBR", "FRA", "ESP", "ITA", "NLD"];
@@ -233,7 +233,7 @@ fn check_knob(value: &Value, spec: SpecVersion, privacy: Privacy) {
             assert_eq!(text(value, "/user/consent"), Some(expected), "the TC string differs");
             assert_eq!(
                 text(value, "/regs/gpp").and_then(|gpp| gpp.split_once('~')),
-                Some(("DBABMA", expected)),
+                Some(("DBABM", expected)),
                 "the GPP section differs from the TC string"
             );
         }
@@ -276,6 +276,23 @@ fn check_case(value: &Value, profile: Profile, spec: SpecVersion, privacy: Priva
             number(value, "/regs/gdpr"),
             expected_gdpr(privacy),
             "{profile} {privacy:?} {spec}"
+        );
+    }
+}
+
+#[test]
+fn the_privacy_knob_survives_a_mutation() {
+    for privacy in Privacy::ALL {
+        let request = Request::builder(Profile::SiteDisplay)
+            .seed(Seed::new(35))
+            .privacy(privacy)
+            .degrade(DegradeRate::percent(100))
+            .build();
+
+        assert!(request.mutation().is_some(), "{privacy:?} did not mutate");
+        assert!(
+            serde_json::from_str::<Value>(&request.to_json_string()).is_ok(),
+            "{privacy:?} broke JSON"
         );
     }
 }

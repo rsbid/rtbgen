@@ -12,11 +12,13 @@ use crate::version::SpecVersion;
 
 /// The typed builder of a generated bid request.
 ///
-/// Every knob is a type, not a bare number or string, and every knob widens the
-/// profile instead of conflicting with it: `.deals()` adds a `pmp` object to any
-/// profile, `.floor()` overrides the floors of its impressions. That is why
-/// [`RequestBuilder::build`] returns a [`Request`] and not a `Result`: there is
-/// no combination the builder can express that it has to reject.
+/// Every knob is a type, not a bare number or string. A knob either widens the
+/// profile (`.deals()` adds a `pmp` object to any profile) or deliberately
+/// overrides its values (`.floor()` replaces the floors, `.privacy()` replaces
+/// the privacy scenario, `.degrade()` adds one named defect); it never
+/// contradicts the profile. That is why [`RequestBuilder::build`] returns a
+/// [`Request`] and not a `Result`: there is no combination the builder can
+/// express that it has to reject.
 ///
 /// The default configuration is [`Seed::new(0)`](Seed::new), `OpenRTB` 2.6 and
 /// no knobs. A knob that is not set changes nothing, so a profile's default

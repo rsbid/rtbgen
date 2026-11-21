@@ -6,13 +6,17 @@
 //! string always carries the same TC string in its TCF EU v2 section, and
 //! `coppa=1` never carries identifiers.
 //!
-//! The generator draws a scenario from the seed. [`Privacy`] lets the builder
-//! override it, which is the only way to ask for a specific regulation state.
+//! The profiles that draw a request body draw a scenario from the seed; the
+//! `Sparse` and `Maximal` profiles use a fixed privacy shape. [`Privacy`] lets
+//! the builder override the drawn or fixed scenario on any profile.
+
+use core::fmt;
 
 /// The consent value a TC string carries.
 ///
-/// The string itself is a valid TCF v2.2 TC string: purpose consents are either
-/// all granted or all denied, and vendor 1 follows the same value.
+/// The string itself is a syntactically valid TCF v2.2 TC string: purpose
+/// consents are either all granted or all denied, and vendor 1 follows the same
+/// value. It is a synthetic fixture, not a registered CMP's output.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Consent {
     /// Every purpose is consented to.
@@ -22,9 +26,12 @@ pub enum Consent {
 }
 
 /// The GPP string whose TCF EU v2 section is `TCF_CONSENT_DENIED`.
-pub(crate) const GPP_DENIED: &str = "DBABMA~CQdWToAQdWToAAAABAENEsEgAAAAAAAAAAYgAAgAAgAA";
+///
+/// `DBABM` is the canonical GPP header for version 1 with section id 2 (TCF EU
+/// v2): type 3, version 1 and section 2, padded to 30 bits. Do not add padding.
+pub(crate) const GPP_DENIED: &str = "DBABM~CQdWToAQdWToAAAABAENEsEgAAAAAAAAAAYgAAgAAgAA";
 /// The GPP string whose TCF EU v2 section is `TCF_CONSENT_GRANTED`.
-pub(crate) const GPP_GRANTED: &str = "DBABMA~CQdWToAQdWToAAAABAENEsEsAP_gAAAAAAYgAAoAAgAA";
+pub(crate) const GPP_GRANTED: &str = "DBABM~CQdWToAQdWToAAAABAENEsEsAP_gAAAAAAYgAAoAAgAA";
 
 /// The TCF v2.2 TC string of a denied consent.
 ///
@@ -46,21 +53,95 @@ pub enum Privacy {
     /// `coppa=1`: no `user`, no `device.ifa`, no `device.ip` and no precise
     /// location, which is how a child-directed request is shaped.
     Coppa,
-    /// `regs.coppa=0`, `regs.gdpr=0`: GDPR does not apply.
+    /// `regs.coppa=0`, `regs.gdpr=0`: GDPR does not apply. Under `OpenRTB`
+    /// 2.5 the writer omits `regs.gdpr`, so only `regs.coppa=0` remains.
     GdprDisabled,
-    /// `regs.coppa=0`, `regs.gdpr=1` and a TCF v2.2 TC string.
+    /// `regs.coppa=0`, `regs.gdpr=1` and a syntactically valid TCF v2.2 TC
+    /// string.
     ///
-    /// When the builder sets this variant, the matching `regs.gpp` and
-    /// `regs.gpp_sid` are emitted as well, so the two transports carry the
-    /// same string.
+    /// Under `OpenRTB` 2.6 the matching `regs.gpp` and `regs.gpp_sid` are
+    /// emitted as well, so the two transports carry the same string. 2.5 has
+    /// no `user.consent`, `regs.gdpr`, `regs.gpp` or `regs.gpp_sid`, so the
+    /// writer only changes the request location and emits `regs.coppa=0`.
     Gdpr {
         /// The consent value of the emitted TC string.
         consent: Consent,
     },
     /// `regs.coppa=0`, `regs.gdpr=1` and no TC string: the request arrives
-    /// without consent, which a bidder must handle.
+    /// without consent, which a bidder must handle. Under `OpenRTB` 2.5 the
+    /// writer omits `regs.gdpr`, so only `regs.coppa=0` remains.
     GdprWithoutConsent,
 }
+
+impl Privacy {
+    /// Every privacy scenario the builder can express.
+    ///
+    /// The drawn path additionally produces a TC string without `GPP` and a
+    /// `GdprDisabled` US request with `regs.ext.us_privacy`; the builder states
+    /// cover the scenarios a caller can pin deterministically.
+    pub const ALL: [Self; 6] = [
+        Self::None,
+        Self::Coppa,
+        Self::GdprDisabled,
+        Self::Gdpr { consent: Consent::Granted },
+        Self::Gdpr { consent: Consent::Denied },
+        Self::GdprWithoutConsent,
+    ];
+
+    /// The stable `snake_case` name accepted by [`Privacy::from_name`].
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Coppa => "coppa",
+            Self::GdprDisabled => "gdpr_disabled",
+            Self::Gdpr { consent: Consent::Granted } => "gdpr_granted",
+            Self::Gdpr { consent: Consent::Denied } => "gdpr_denied",
+            Self::GdprWithoutConsent => "gdpr_no_consent",
+        }
+    }
+
+    /// Parses the exact `snake_case` name of a privacy scenario.
+    ///
+    /// The match is case-sensitive; there are no aliases. The names come from
+    /// [`Privacy::ALL`], so a new variant is parsed as soon as it is listed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`UnknownPrivacy`] when `name` is not one of [`Privacy::ALL`]'s
+    /// names.
+    pub fn from_name(name: &str) -> Result<Self, UnknownPrivacy> {
+        Self::ALL.into_iter().find(|privacy| privacy.name() == name).ok_or(UnknownPrivacy)
+    }
+}
+
+impl fmt::Display for Privacy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// The error returned by [`Privacy::from_name`] for an unknown scenario.
+#[derive(Debug, Clone, Copy)]
+pub struct UnknownPrivacy;
+
+impl fmt::Display for UnknownPrivacy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("unknown privacy scenario; expected one of:")?;
+
+        let mut names = Privacy::ALL.iter();
+        if let Some(first) = names.next() {
+            write!(f, " {first}")?;
+        }
+        for privacy in names {
+            write!(f, ", {privacy}")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl core::error::Error for UnknownPrivacy {}
 
 #[cfg(test)]
 mod tests {
@@ -71,7 +152,9 @@ mod tests {
     use lib_tcstring::TcModelV2;
     use std::vec::Vec;
 
-    use super::{GPP_DENIED, GPP_GRANTED, TCF_CONSENT_DENIED, TCF_CONSENT_GRANTED};
+    use super::{
+        GPP_DENIED, GPP_GRANTED, Privacy, TCF_CONSENT_DENIED, TCF_CONSENT_GRANTED, UnknownPrivacy,
+    };
 
     fn decode(string: &str) -> TcModelV2 {
         TcModelV2::try_from(string).expect("a valid TC string")
@@ -131,6 +214,60 @@ mod tests {
             GPP_GRANTED.split_once('~').map(|(_, section)| section),
             Some(TCF_CONSENT_GRANTED)
         );
+    }
+
+    #[test]
+    fn the_gpp_header_is_the_canonical_tcf_eu_v2_header() {
+        // The IAB GPP header for version 1 with section id 2 is `DBABM`.
+        // An extra zero group (`DBABMA`) is not the canonical encoding.
+        for string in [GPP_DENIED, GPP_GRANTED] {
+            assert_eq!(
+                string.split_once('~').map(|(header, _)| header),
+                Some("DBABM"),
+                "{string} has the wrong GPP header"
+            );
+        }
+    }
+
+    #[test]
+    fn every_privacy_round_trips_through_its_name() {
+        for privacy in Privacy::ALL {
+            assert!(matches!(
+                Privacy::from_name(privacy.name()),
+                Ok(found) if found == privacy
+            ));
+        }
+    }
+
+    #[test]
+    fn privacy_names_are_unique_snake_case() {
+        let mut names = Vec::new();
+        for privacy in Privacy::ALL {
+            let name = privacy.name();
+            assert!(
+                name.bytes().all(|byte| byte.is_ascii_lowercase() || byte == b'_'),
+                "{name} is not snake_case"
+            );
+            assert!(names.iter().all(|seen| *seen != name), "{name} is a duplicate");
+            names.push(name);
+        }
+    }
+
+    #[test]
+    fn unknown_privacy_names_are_rejected() {
+        assert!(matches!(Privacy::from_name("Coppa"), Err(UnknownPrivacy)));
+        assert!(matches!(Privacy::from_name("gdpr-granted"), Err(UnknownPrivacy)));
+        assert!(matches!(Privacy::from_name(""), Err(UnknownPrivacy)));
+    }
+
+    #[test]
+    fn unknown_privacy_lists_every_name() {
+        let error = UnknownPrivacy;
+        let message = std::format!("{error}");
+
+        for privacy in Privacy::ALL {
+            assert!(message.contains(privacy.name()), "{message} does not list {}", privacy.name());
+        }
     }
 
     #[test]

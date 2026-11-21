@@ -30,8 +30,11 @@ let json: String = req.to_json_string();
 - A seed plus a profile is the whole fixture: put the seed in the test, not the JSON.
 - Target OpenRTB 2.5 with `.spec(SpecVersion::V25)`; 2.6 is the default, so do not set it.
 - For a GDPR or COPPA scenario, use `.privacy(Privacy::Gdpr { consent: Consent::Granted })`,
-  `Privacy::Coppa`, `Privacy::GdprWithoutConsent` or `Privacy::GdprDisabled`. One scenario keeps
+  `Privacy::Coppa`, `Privacy::GdprWithoutConsent` or `Privacy::GdprDisabled`; `Privacy::ALL` and
+  `Privacy::from_name()` list the same names the CLI takes with `--privacy`. One scenario keeps
   `regs`, the TCF v2.2 string, `regs.gpp` and the location coherent, so do not hand-edit them.
+  The seed draws a scenario only for profiles that draw a body; `Sparse` and `Maximal` use a
+  fixed shape.
 - Add `use rtbgen::Profile::*;` only inside a test module; the variants are unprefixed
   and collide with domain types otherwise.
 - For a parser's failure path, add `.degrade(DegradeRate::percent(5))`: one deliberate

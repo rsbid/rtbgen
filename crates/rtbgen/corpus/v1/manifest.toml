@@ -265,3 +265,33 @@ spec = "2.6"
 profile = "multi_imp"
 seed = 27
 privacy = "none"
+
+[[request]]
+name = "privacy-gdpr-granted-v25-22"
+spec = "2.5"
+profile = "site_display"
+seed = 22
+privacy = "gdpr_granted"
+
+[[request]]
+name = "privacy-coppa-maximal-v26-2"
+spec = "2.6"
+profile = "maximal"
+seed = 2
+privacy = "coppa"
+
+[[request]]
+name = "privacy-gdpr-sparse-v26-0"
+spec = "2.6"
+profile = "sparse"
+seed = 0
+privacy = "gdpr_denied"
+
+[[request]]
+name = "privacy-gdpr-degrade-v26-35"
+spec = "2.6"
+profile = "site_display"
+seed = 35
+privacy = "gdpr_denied"
+degrade = 100
+mutation = "bid_floor_as_string"

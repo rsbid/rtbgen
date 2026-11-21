@@ -3,7 +3,9 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use rtbgen::{Currency, Deals, DegradeRate, Floor, ImpressionCount, Profile, Seed, SpecVersion};
+use rtbgen::{
+    Currency, Deals, DegradeRate, Floor, ImpressionCount, Privacy, Profile, Seed, SpecVersion,
+};
 
 /// A fully parsed command.
 pub(crate) enum Command {
@@ -27,6 +29,7 @@ pub(crate) struct Generate {
     pub(crate) impressions: Option<ImpressionCount>,
     pub(crate) deals: Option<Deals>,
     pub(crate) floor: Option<Floor>,
+    pub(crate) privacy: Option<Privacy>,
     pub(crate) degrade: Option<DegradeRate>,
     pub(crate) out: Option<PathBuf>,
 }
@@ -69,6 +72,7 @@ impl Default for Generate {
             impressions: None,
             deals: None,
             floor: None,
+            privacy: None,
             degrade: None,
             out: None,
         }
@@ -141,6 +145,13 @@ impl<I: Iterator<Item = String>> Parser<I> {
                 let value = self.value("--currency")?;
                 self.currency = Currency::from_code(&value)
                     .map_err(|error| Error::invalid("--currency", value, &error))?;
+            }
+            "--privacy" => {
+                let value = self.value("--privacy")?;
+                self.generate.privacy = Some(
+                    Privacy::from_name(&value)
+                        .map_err(|error| Error::invalid("--privacy", value, &error))?,
+                );
             }
             "--degrade" => {
                 let value = self.value("--degrade")?;
@@ -273,7 +284,7 @@ impl fmt::Display for Error {
 
 #[cfg(test)]
 mod tests {
-    use rtbgen::{DegradeRate, Profile, SpecVersion};
+    use rtbgen::{Consent, DegradeRate, Privacy, Profile, SpecVersion};
 
     use super::{Command, Error};
 
@@ -334,6 +345,34 @@ mod tests {
         assert_eq!(rate(parse_command(&["--degrade", "5%"]).ok()), Some(500));
         assert_eq!(rate(parse_command(&["--degrade", "100"]).ok()), Some(10_000));
         assert_eq!(rate(parse_command(&["--degrade", "0"]).ok()), Some(0));
+    }
+
+    #[test]
+    fn the_privacy_scenario_is_parsed_by_name() {
+        let privacy = |command: Option<Command>| match command {
+            Some(Command::Generate(generate)) => generate.privacy,
+            _ => None,
+        };
+
+        assert_eq!(
+            privacy(parse_command(&["--privacy", "gdpr_granted"]).ok()),
+            Some(Privacy::Gdpr { consent: Consent::Granted })
+        );
+        assert_eq!(
+            privacy(parse_command(&["--privacy", "gdpr_denied"]).ok()),
+            Some(Privacy::Gdpr { consent: Consent::Denied })
+        );
+        assert_eq!(privacy(parse_command(&["--privacy", "coppa"]).ok()), Some(Privacy::Coppa));
+    }
+
+    #[test]
+    fn a_bad_privacy_name_is_rejected() {
+        for value in ["Coppa", "gdpr-granted", "unknown", ""] {
+            assert!(
+                matches!(parse_command(&["--privacy", value]), Err(Error::InvalidValue { .. })),
+                "{value:?} was accepted"
+            );
+        }
     }
 
     #[test]

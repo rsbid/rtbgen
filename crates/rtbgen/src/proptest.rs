@@ -13,6 +13,7 @@ use crate::deals::Deals;
 use crate::degrade::DegradeRate;
 use crate::floor::Floor;
 use crate::impressions::ImpressionCount;
+use crate::privacy::Privacy;
 use crate::profile::Profile;
 use crate::request::Request;
 use crate::seed::Seed;
@@ -21,16 +22,18 @@ use crate::version::SpecVersion;
 const PROFILES: &[Profile] = &Profile::ALL;
 const SPECS: &[SpecVersion] = &SpecVersion::ALL;
 const CURRENCIES: &[Currency] = &[Currency::USD, Currency::EUR, Currency::GBP];
+const PRIVACY: &[Privacy] = &Privacy::ALL;
 
 /// A strategy over every profile, revision and typed knob.
 ///
 /// The seed and the revision are arbitrary; the impression count stays inside
 /// `1..=3` and the deal count inside `1..=8`, and both are optional, so the
 /// strategy also produces requests with the profile's own defaults and without
-/// a `pmp`. The floor and the degrade rate are optional too, and the rate
-/// shrinks toward zero. Every generated request is built by the same core as a
-/// hand-written builder, so a failing case shrinks to a small seed or a smaller
-/// knob rather than to an opaque byte string.
+/// a `pmp`. The floor, the degrade rate and the privacy scenario are optional
+/// too; the rate and the scenario shrink toward zero/absence. Every generated
+/// request is built by the same core as a hand-written builder, so a failing
+/// case shrinks to a small seed or a smaller knob rather than to an opaque byte
+/// string.
 pub fn request() -> impl Strategy<Value = Request> {
     (
         select(PROFILES),
@@ -40,8 +43,9 @@ pub fn request() -> impl Strategy<Value = Request> {
         option::of(1_u8..=Deals::MAX.count()),
         option::of((0_i64..=1_000_000_i64, select(CURRENCIES))),
         option::of(0_u8..=100),
+        option::of(select(PRIVACY)),
     )
-        .prop_map(|(profile, seed, spec, impressions, deals, floor, degrade)| {
+        .prop_map(|(profile, seed, spec, impressions, deals, floor, degrade, privacy)| {
             let builder = Request::builder(profile).seed(Seed::new(seed)).spec(spec);
             let builder = impressions
                 .map_or(builder, |count| builder.impressions_exact(ImpressionCount::new(count)));
@@ -52,6 +56,7 @@ pub fn request() -> impl Strategy<Value = Request> {
             let builder = degrade.map_or(builder, |percent| {
                 builder.degrade(DegradeRate::percent(u16::from(percent)))
             });
+            let builder = privacy.map_or(builder, |privacy| builder.privacy(privacy));
 
             builder.build()
         })

@@ -6,7 +6,7 @@ use std::fs;
 use std::path::Path;
 
 use rtbgen::corpus::{self, CorpusEntry};
-use rtbgen::{Consent, DegradeRate, Mutation, Privacy, Profile, Seed, SpecVersion};
+use rtbgen::{DegradeRate, Mutation, Privacy, Profile, Seed, SpecVersion};
 use serde_json::Value;
 
 #[test]
@@ -43,7 +43,7 @@ fn the_manifest_lists_every_entry_and_nothing_else() {
         assert_eq!(listed.knobs & 8 != 0, entry.privacy().is_some(), "{}", entry.name());
         assert_eq!(
             listed.privacy.as_deref(),
-            entry.privacy().map(privacy_name),
+            entry.privacy().map(Privacy::name),
             "{}",
             entry.name()
         );
@@ -82,17 +82,6 @@ fn the_corpus_directory_has_no_orphans() {
 
 fn path_of(entry: CorpusEntry) -> std::path::PathBuf {
     Path::new(corpus::DIR).join(std::format!("{}.json", entry.name()))
-}
-
-const fn privacy_name(privacy: Privacy) -> &'static str {
-    match privacy {
-        Privacy::None => "none",
-        Privacy::Coppa => "coppa",
-        Privacy::GdprDisabled => "gdpr_disabled",
-        Privacy::Gdpr { consent: Consent::Granted } => "gdpr_granted",
-        Privacy::Gdpr { consent: Consent::Denied } => "gdpr_denied",
-        Privacy::GdprWithoutConsent => "gdpr_no_consent",
-    }
 }
 
 struct Listed {

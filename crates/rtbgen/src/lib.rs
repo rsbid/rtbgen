@@ -66,12 +66,15 @@
 //!
 //! ## Privacy
 //!
-//! `regs`, `user.consent`, `regs.gpp` and the request location are drawn as one
+//! `regs`, `user.consent`, `regs.gpp` and the request location are one
 //! [`Privacy`] scenario, so a request cannot claim `gdpr=1` from the USA or
-//! send a GPP string that differs from its TC string. `.privacy()` replaces the
-//! drawn scenario: [`Privacy::Gdpr`] emits a TCF v2.2 TC string,
-//! [`Privacy::Coppa`] drops identifiers and precise geolocation, and
-//! [`Privacy::GdprWithoutConsent`] is the no-consent case a bidder must handle.
+//! send a GPP string that differs from its TC string. The profiles that draw a
+//! body draw the scenario from the seed; `Sparse` and `Maximal` use a fixed
+//! shape. `.privacy()` replaces it on any profile: [`Privacy::Gdpr`] emits a
+//! syntactically valid TCF v2.2 TC string, [`Privacy::Coppa`] drops identifiers
+//! and precise geolocation, and [`Privacy::GdprWithoutConsent`] is the
+//! no-consent case a bidder must handle. [`Privacy::ALL`], [`Privacy::name`] and
+//! [`Privacy::from_name`] are the stable names used by the CLI and the corpus.
 //!
 //! ## Features
 //!
@@ -167,7 +170,7 @@ pub use deals::Deals;
 pub use degrade::{DegradeRate, Mutation};
 pub use floor::Floor;
 pub use impressions::ImpressionCount;
-pub use privacy::{Consent, Privacy};
+pub use privacy::{Consent, Privacy, UnknownPrivacy};
 pub use profile::{Profile, UnknownProfile};
 pub use request::Request;
 pub use rng::{BytesEntropy, Entropy, RngEntropy, Share, Span};

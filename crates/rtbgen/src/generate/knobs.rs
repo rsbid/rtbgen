@@ -1,7 +1,9 @@
-//! The widening knobs, applied after the profile has chosen its shape.
+//! The knobs, applied after the profile has chosen its shape.
 //!
 //! A knob never consumes the seed and never changes a request when it is not
-//! set, so the default bytes of a profile are independent of the knob API.
+//! set, so the default bytes of a profile are independent of the knob API. A
+//! knob either widens the model (deals), overrides a value (floor) or replaces
+//! the privacy scenario.
 
 use crate::code::DealAuctionType;
 use crate::currency::Currency;
@@ -59,7 +61,7 @@ pub(super) fn build_fixed_deals(count: u8) -> DealList {
     deals
 }
 
-/// Applies the widening knobs to a generated model.
+/// Applies the configured knobs to a generated model.
 pub(super) fn apply_knobs(model: &mut RequestModel, config: &Config) {
     if let Some(privacy) = config.privacy() {
         apply_privacy(model, Scenario::from_privacy(privacy), config.spec_version());
